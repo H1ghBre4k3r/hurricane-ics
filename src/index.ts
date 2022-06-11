@@ -18,7 +18,7 @@ enum Location {
     MountainStage = "Mountain Stage",
 }
 
-function event(day: Day, hour: number, minutes?: number): Date {
+function event(day: Day, hour: number, minutes = 0): Date {
     return new Date(2022, 5, 16 + day, hour, minutes);
 }
 
@@ -28,6 +28,24 @@ const concerts: ICalEventData[] = [
         location: Location.WildCoastStage,
         start: event(Day.thursday, 20),
         end: event(Day.thursday, 21),
+    },
+    {
+        summary: "MILLIARDEN",
+        location: Location.WildCoastStage,
+        start: event(Day.thursday, 21, 30),
+        end: event(Day.thursday, 22, 30),
+    },
+    {
+        summary: "SONDASCHULE",
+        location: Location.WildCoastStage,
+        start: event(Day.thursday, 23),
+        end: event(Day.friday, 0, 15),
+    },
+    {
+        summary: "MEGALOH",
+        location: Location.WildCoastStage,
+        start: event(Day.friday, 0, 45),
+        end: event(Day.friday, 2),
     },
 ];
 
