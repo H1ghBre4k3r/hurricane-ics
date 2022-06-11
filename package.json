@@ -1,0 +1,16 @@
+{
+    "name": "hurricane-ics",
+    "version": "1.0.0",
+    "description": "ICS for Hurricane. ",
+    "main": "build/index.js",
+    "scripts": {
+        "build": "tsc",
+        "start": "node .",
+        "build:start": "npm run build && npm run start"
+    },
+    "author": "Louis Meyer <h1ghbre4k3r@dev.bre4k3r.de> (H1ghBre4k3r)",
+    "license": "GPL-3.0",
+    "devDependencies": {
+        "typescript": "^4.7.3"
+    }
+}
