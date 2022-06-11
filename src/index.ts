@@ -10,14 +10,22 @@ enum Day {
     sunday = 3,
 }
 
-function event(day: Day, hour: number): Date {
-    return new Date(2022, 5, 16 + day, hour);
+enum Location {
+    WildCoastStage = "Wild Coast Stage",
+    CoastStage = "Coast Stage",
+    ForestStage = "Forest Stage",
+    RiverStage = "River Stage",
+    MountainStage = "Mountain Stage",
+}
+
+function event(day: Day, hour: number, minutes?: number): Date {
+    return new Date(2022, 5, 16 + day, hour, minutes);
 }
 
 const concerts: ICalEventData[] = [
     {
         summary: "ALEX MOFA GANG",
-        location: "Wild Coast Stage",
+        location: Location.WildCoastStage,
         start: event(Day.thursday, 20),
         end: event(Day.thursday, 21),
     },
