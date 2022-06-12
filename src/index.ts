@@ -4,24 +4,10 @@ import ical, { ICalEventData } from "ical-generator";
 
 const calendar = ical({ name: "Hurricane Calendar" });
 
-enum Day {
-    thursday = 0,
-    friday = 1,
-    saturday = 2,
-    sunday = 3,
-    monday = 4,
-}
-
-enum Location {
-    WildCoastStage = "Wild Coast Stage",
-    CoastStage = "Coast Stage",
-    ForestStage = "Forest Stage",
-    RiverStage = "River Stage",
-    MountainStage = "Mountain Stage",
-}
-
-function event(day: Day, hour: number, minutes = 0): Date {
-    return new Date(2022, 5, 16 + day, hour, minutes);
+function parseDate(rawDate: string, rawTime: string): Date {
+    const [day, month, year] = /(\d\d)(\d\d)(\d\d)/.exec(rawDate)!.slice(1).map(parseInt);
+    const [hour, minute] = /(\d+):(\d+)/.exec(rawTime)!.slice(1).map(parseInt);
+    return new Date(year, month, day, hour, minute);
 }
 
 type ConcertDate = {
@@ -76,16 +62,18 @@ type FestivalPlan = {
     const festival: FestivalPlan = match ? JSON.parse(match[1]) : { shows: [] };
 
     const concerts = festival.shows.map<ICalEventData>(show => {
+        const start = parseDate(show.date_start, show.time_start);
+        const end = parseDate(show.date_start, show.time_end);
+        // Handle case where event goes past midnight
+        while (end < start) {
+            end.setDate(end.getDate() + 1);
+        }
         return {
             summary: show.artist.name,
             location: show.stage.name,
-            // start: event(parseInt(day, 10), concert.start.hours, concert.start.minutes),
-            // end: event(parseInt(day, 10), concert.end.hours, concert.end.minutes),
-            // categories: [
-            //     {
-            //         name: concert.location,
-            //     },
-            // ],
+            start,
+            end,
+            description: show.artist.description,
             timezone: "Europe/Berlin",
         };
     });
