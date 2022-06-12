@@ -17,7 +17,7 @@ spec:
                 io.kompose.service: hurricane-ics-deployment
         spec:
             containers:
-                - image: ghcr.io/h1ghbre4k3r/hurricane-ics
+                - image: ghcr.io/h1ghbre4k3r/hurricane-ics:latest
                   imagePullPolicy: Always
                   name: hurricane-ics-deployment
                   ports:

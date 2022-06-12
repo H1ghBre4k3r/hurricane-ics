@@ -1,4 +1,4 @@
-import http from "http";
+import express from "express";
 import ical, { ICalEventData } from "ical-generator";
 
 const calendar = ical({ name: "Hurricane Calendar" });
@@ -567,19 +567,24 @@ const concerts = Object.entries(festival).flatMap(([day, concerts]) => {
         return {
             summary: concert.summary,
             location: concert.location,
-            start: event(parseInt(day, 10), concert.start.hours - 2, concert.start.minutes),
-            end: event(parseInt(day, 10), concert.end.hours - 2, concert.end.minutes),
+            start: event(parseInt(day, 10), concert.start.hours, concert.start.minutes),
+            end: event(parseInt(day, 10), concert.end.hours, concert.end.minutes),
             categories: [
                 {
                     name: concert.location,
                 },
             ],
+            timezone: "Europe/Berlin",
         };
     });
 });
 
 calendar.events(concerts);
 
-http.createServer((_, res) => calendar.serve(res)).listen(3000, () => {
-    console.log(":3000");
+const server = express();
+
+server.get("/ics/2022", (_req, res) => calendar.serve(res));
+
+server.listen(3000, () => {
+    console.log(`Started listening on port :3000`);
 });
