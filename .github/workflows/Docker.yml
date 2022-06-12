@@ -37,4 +37,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/$OWNER_LC/hurricane-ics:latest
+          tags: ghcr.io/${{ env.OWNER_LC }}/hurricane-ics:latest
