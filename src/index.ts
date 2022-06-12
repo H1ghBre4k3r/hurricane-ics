@@ -5,8 +5,8 @@ import ical, { ICalEventData } from "ical-generator";
 const calendar = ical({ name: "Hurricane Calendar" });
 
 function parseDate(rawDate: string, rawTime: string): Date {
-    const [day, month, year] = /(\d\d)(\d\d)(\d\d)/.exec(rawDate)!.slice(1).map(parseInt);
-    const [hour, minute] = /(\d+):(\d+)/.exec(rawTime)!.slice(1).map(parseInt);
+    const [day, month, year] = /(\d\d)(\d\d)(\d\d)/.exec(rawDate)!.slice(1).map(d => parseInt(d, 10));
+    const [hour, minute] = /(\d+):(\d+)/.exec(rawTime)!.slice(1).map(d => parseInt(d, 10));
     return new Date(year, month, day, hour, minute);
 }
 
