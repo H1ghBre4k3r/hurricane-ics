@@ -1,0 +1,32 @@
+name: K8s
+
+on:
+  workflow_run:
+    workflows:
+      - Docker
+    types:
+      - completed
+
+jobs:
+  deploy-on-cluster:
+    name: Deploy On Cluster
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: azure/k8s-set-context@v2
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.K8S_CONFIG }}
+      - uses: Azure/k8s-deploy@v1.4
+        with:
+          manifests: |
+            k8s/hurricane-namespace.yml
+          kubectl-version: "latest"
+      - uses: Azure/k8s-deploy@v1.4
+        with:
+          manifests: |
+            k8s/hurricane-ics.yml
+          kubectl-version: "latest"
+          namespace: hurricane-ics

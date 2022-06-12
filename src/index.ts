@@ -580,6 +580,6 @@ const concerts = Object.entries(festival).flatMap(([day, concerts]) => {
 
 calendar.events(concerts);
 
-http.createServer((_, res) => calendar.serve(res)).listen(3000, "127.0.0.1", () => {
-    console.log("Server running at http://127.0.0.1:3000/");
+http.createServer((_, res) => calendar.serve(res)).listen(3000, () => {
+    console.log(":3000");
 });
