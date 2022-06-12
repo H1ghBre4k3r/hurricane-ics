@@ -7,7 +7,7 @@ const calendar = ical({ name: "Hurricane Calendar" });
 function parseDate(rawDate: string, rawTime: string): Date {
     const [day, month, year] = /(\d\d)(\d\d)(\d\d)/.exec(rawDate)!.slice(1).map(d => parseInt(d, 10));
     const [hour, minute] = /(\d+):(\d+)/.exec(rawTime)!.slice(1).map(d => parseInt(d, 10));
-    return new Date(year, month, day, hour, minute);
+    return new Date(2000 + year, month - 1, day, hour, minute);
 }
 
 type ConcertDate = {
