@@ -3,7 +3,8 @@ kind: Deployment
 metadata:
     labels:
         io.kompose.service: hurricane-ics-deployment
-    name: mo-ics-deployment
+    name: hurricane-ics-deployment
+    namespace: hurricane-ics
 spec:
     replicas: 1
     selector:
@@ -31,6 +32,7 @@ metadata:
     labels:
         io.kompose.service: hurricane-ics-service
     name: hurricane-ics-service
+    namespace: hurricane-ics
 spec:
     ports:
         - protocol: TCP
@@ -45,7 +47,7 @@ apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
     name: hurricane-ics-ingress
-    namespace: default
+    namespace: hurricane-ics
 spec:
     entryPoints:
         - websecure
