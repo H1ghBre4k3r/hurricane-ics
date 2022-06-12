@@ -567,8 +567,8 @@ const concerts = Object.entries(festival).flatMap(([day, concerts]) => {
         return {
             summary: concert.summary,
             location: concert.location,
-            start: event(parseInt(day, 10), concert.start.hours, concert.start.minutes),
-            end: event(parseInt(day, 10), concert.end.hours, concert.end.minutes),
+            start: event(parseInt(day, 10), concert.start.hours - 2, concert.start.minutes),
+            end: event(parseInt(day, 10), concert.end.hours - 2, concert.end.minutes),
             categories: [
                 {
                     name: concert.location,
