@@ -407,9 +407,161 @@ const festival: FestivalPlan = {
             end: date(26),
         },
     ],
-    [Day.sunday]: [],
+    [Day.sunday]: [
+        {
+            summary: "PRESS CLUB",
+            location: Location.MountainStage,
+            start: date(12),
+            end: date(12, 30),
+        },
+        {
+            summary: "2ERSITZ",
+            location: Location.ForestStage,
+            start: date(12),
+            end: date(12, 30),
+        },
+        {
+            summary: "HOT MILK",
+            location: Location.RiverStage,
+            start: date(12, 30),
+            end: date(13),
+        },
+        {
+            summary: "AVRALIZE",
+            location: Location.WildCoastStage,
+            start: date(12, 30),
+            end: date(13),
+        },
+        {
+            summary: "NURA",
+            location: Location.MountainStage,
+            start: date(13),
+            end: date(13, 45),
+        },
+        {
+            summary: "SKINDRED",
+            location: Location.ForestStage,
+            start: date(13),
+            end: date(13, 45),
+        },
+        {
+            summary: "ALICE MERTON",
+            location: Location.RiverStage,
+            start: date(13, 45),
+            end: date(14, 30),
+        },
+        {
+            summary: "BLOND",
+            location: Location.WildCoastStage,
+            start: date(13, 45),
+            end: date(14, 30),
+        },
+        {
+            summary: "SWISS & DIE ANDERN",
+            location: Location.ForestStage,
+            start: date(14, 30),
+            end: date(15, 30),
+        },
+        {
+            summary: "BLUES PILLS",
+            location: Location.MountainStage,
+            start: date(14, 30),
+            end: date(15, 30),
+        },
+        {
+            summary: "TONES AND I",
+            location: Location.RiverStage,
+            start: date(15, 30),
+            end: date(16, 40),
+        },
+        {
+            summary: "SCHMYT",
+            location: Location.WildCoastStage,
+            start: date(15, 30),
+            end: date(16, 30),
+        },
+        {
+            summary: "ROYAL BLOOD",
+            location: Location.ForestStage,
+            start: date(16, 15),
+            end: date(17, 15),
+        },
+        {
+            summary: "FRITTENBUDE",
+            location: Location.MountainStage,
+            start: date(16, 15),
+            end: date(17, 15),
+        },
+        {
+            summary: "THEES UHLMANN & BAND",
+            location: Location.RiverStage,
+            start: date(17, 15),
+            end: date(18, 15),
+        },
+        {
+            summary: "MINE",
+            location: Location.WildCoastStage,
+            start: date(17, 15),
+            end: date(18, 15),
+        },
+        {
+            summary: "THE HIVES",
+            location: Location.ForestStage,
+            start: date(18),
+            end: date(19, 15),
+        },
+        {
+            summary: "KUMMER",
+            location: Location.MountainStage,
+            start: date(18),
+            end: date(19, 15),
+        },
+        {
+            summary: "KONTRA K",
+            location: Location.RiverStage,
+            start: date(19),
+            end: date(20, 15),
+        },
+        {
+            summary: "TOM GREGORY",
+            location: Location.WildCoastStage,
+            start: date(19),
+            end: date(20, 15),
+        },
+        {
+            summary: "BRING ME THE HORIZON",
+            location: Location.ForestStage,
+            start: date(20),
+            end: date(21, 15),
+        },
+        {
+            summary: "FERDINAND FKA LEFT BOY",
+            location: Location.MountainStage,
+            start: date(20),
+            end: date(21, 15),
+        },
+        {
+            summary: "LARI LUKE",
+            location: Location.WildCoastStage,
+            start: date(20, 30),
+            end: date(22),
+        },
+        {
+            summary: "RISE AGAINST",
+            location: Location.RiverStage,
+            start: date(21),
+            end: date(22, 30),
+        },
+        {
+            summary: "KINGS OF LEON",
+            location: Location.ForestStage,
+            start: date(22, 30),
+            end: date(24),
+        },
+    ],
     [Day.monday]: [],
 };
+
 const concerts = Object.entries(festival).flatMap(([day, concerts]) => {
     return concerts.map<ICalEventData>((concert) => {
         return {
