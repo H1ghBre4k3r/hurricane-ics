@@ -22,7 +22,7 @@
         "ical-generator": "^3.4.3",
         "moment": "^2.29.3",
         "moment-timezone": "^0.5.34",
-        "node-fetch": "^2.6.7",
+        "node-fetch": "^3.2.6",
         "rrule": "^2.7.0"
     }
 }
