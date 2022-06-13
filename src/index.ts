@@ -1,11 +1,12 @@
 import express, { Router } from "express";
-import { fetchFestival } from "./festival";
+import { fetchFestivalFactory } from "./festival";
 import { handleGetDayFactory } from "./routes/day.route";
 import { handleGetIndexFactory } from "./routes/index.route";
 
 const server = express();
-
 const router = Router();
+const fetchFestival = fetchFestivalFactory();
+
 router.get("/", handleGetIndexFactory(fetchFestival));
 router.get("/day/:day", handleGetDayFactory(fetchFestival));
 server.use("/ics/2022", router);
