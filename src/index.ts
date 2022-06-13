@@ -1,13 +1,13 @@
 import express, { Router } from "express";
-import { festival } from "./festival";
+import { fetchFestival } from "./festival";
 import { handleGetDayFactory } from "./routes/day.route";
 import { handleGetIndexFactory } from "./routes/index.route";
 
 const server = express();
 
 const router = Router();
-router.get("/", handleGetIndexFactory(festival));
-router.get("/day/:day", handleGetDayFactory(festival));
+router.get("/", handleGetIndexFactory(fetchFestival));
+router.get("/day/:day", handleGetDayFactory(fetchFestival));
 server.use("/ics/2022", router);
 
 server.listen(3000, () => {

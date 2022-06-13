@@ -6,26 +6,42 @@ export enum Day {
     monday = 4,
 }
 
-export enum Stage {
-    WildCoastStage = "Wild Coast Stage",
-    CoastStage = "Coast Stage",
-    ForestStage = "Forest Stage",
-    RiverStage = "River Stage",
-    MountainStage = "Mountain Stage",
-}
-
 export type ConcertDate = {
     hours: number;
     minutes: number;
 };
 
-export type Concert = {
-    summary: string;
-    location: Stage;
-    start: ConcertDate;
-    end: ConcertDate;
+export type Category = {
+    id: number;
+    name: string;
+};
+
+export type Stage = {
+    id: number;
+    name: string;
+};
+
+export type Artist = {
+    name: string;
+    description: string;
+    image: string;
+    details_url: string;
+    url: string;
+};
+
+export type Show = {
+    category: Category;
+    stage: Stage;
+    date_timestamp: string;
+    date_start: string;
+    time_start: string;
+    time_end: string;
+    artist: Artist;
+    teasertype: number;
 };
 
 export type FestivalPlan = {
-    [day in Day]: Concert[];
+    shows: Show[];
 };
+
+export type FetchFestivalFn = () => Promise<FestivalPlan>;
