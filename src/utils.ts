@@ -28,6 +28,7 @@ export const eventFactory = (show: Show): ICalEventData => {
             plain: show.artist.description,
             html: show.artist.description,
         },
+        url: `https://hurricane.de${show.artist.details_url}`,
         timezone: "Europe/Berlin",
     };
 };

@@ -15,7 +15,6 @@ export const fetchFestivalFactory = () => {
         const diff = Math.round(((diffMs % 86400000) % 3600000) / 60000);
 
         if (diff > 15) {
-            console.log("fetccch");
             const response = await fetch("https://hurricane.de/de/line-up");
             const raw = await response.text();
             const match = /var\s+timetableEvents\s*=\s*(\{.+?\});/.exec(raw);
