@@ -8,6 +8,8 @@ const server = express();
 const router = Router();
 const fetchFestival = fetchFestivalFactory();
 
+server.use("/", express.static(`${__dirname}/../frontend/build`));
+
 router.get("/", handleGetIndexFactory(fetchFestival));
 router.get("/day/:day", handleGetDayFactory(fetchFestival));
 router.get("/artist", handleGetArtistFactory(fetchFestival));

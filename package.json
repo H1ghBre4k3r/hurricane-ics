@@ -4,9 +4,10 @@
     "description": "ICS for Hurricane. ",
     "main": "build/index.js",
     "scripts": {
-        "build": "tsc",
+        "build": "tsc && cd frontend && npm run build",
         "start": "node .",
-        "build:start": "npm run build && npm run start"
+        "build:start": "npm run build && npm run start",
+        "install-deps": "npm install && cd frontend && npm install"
     },
     "author": "Louis Meyer <h1ghbre4k3r@dev.bre4k3r.de> (H1ghBre4k3r)",
     "license": "GPL-3.0",
