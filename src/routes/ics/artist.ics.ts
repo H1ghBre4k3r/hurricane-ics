@@ -16,6 +16,7 @@ export const handleGetArtistIcsFactory = (fetchFestival: FetchFestivalFn) => {
             calendar.events(concerts);
             calendar.serve(res);
         } catch (e) {
+            console.error(e);
             res.sendStatus(400);
         }
     };
