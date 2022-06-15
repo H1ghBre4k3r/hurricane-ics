@@ -6,11 +6,6 @@ export enum Day {
     monday = 4,
 }
 
-export type ConcertDate = {
-    hours: number;
-    minutes: number;
-};
-
 export type Category = {
     id: number;
     name: string;
