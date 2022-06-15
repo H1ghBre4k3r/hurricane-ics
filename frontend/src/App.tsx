@@ -16,7 +16,7 @@ const App = () => {
     const [selections, setSelections] = useState<{ [key: string]: boolean }>({});
 
     useEffect(() => {
-        fetch("http://localhost:3000/api/concerts")
+        fetch("/api/concerts")
             .then((val) => val.json())
             .then((festival: FestivalPlan) => {
                 const days = festival.shows
