@@ -1,3 +1,4 @@
+import cors from "cors";
 import express, { Router } from "express";
 import { fetchFestivalFactory } from "./festival";
 import { handleGetConcertsApiFactory } from "./routes/api/concerts.api";
@@ -8,6 +9,7 @@ import { handleGetIndexIcsFactory } from "./routes/ics/index.ics";
 const fetchFestival = fetchFestivalFactory();
 
 const server = express();
+server.use(cors());
 
 server.use("/", express.static(`${__dirname}/../frontend/build`));
 

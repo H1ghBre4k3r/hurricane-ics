@@ -1,26 +1,17 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useEffect, useState } from "react";
+import "./App.css";
+import { FestivalPlan } from "./types";
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
-}
+const App = () => {
+    const [festival, setFestival] = useState<FestivalPlan>();
+
+    useEffect(() => {
+        fetch("/api/concerts")
+            .then((val) => val.json())
+            .then((val) => setFestival(val));
+    }, [setFestival]);
+
+    return <div>{JSON.stringify(festival)}</div>;
+};
 
 export default App;
