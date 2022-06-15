@@ -16,7 +16,7 @@ const App = () => {
     const [selections, setSelections] = useState<{ [key: string]: boolean }>({});
 
     useEffect(() => {
-        fetch("/api/concerts")
+        fetch("http://localhost:3000/api/concerts")
             .then((val) => val.json())
             .then((festival: FestivalPlan) => {
                 const days = festival.shows
@@ -67,14 +67,21 @@ const App = () => {
                     );
                 })}
                 <div>
-                    {!!Object.entries(selections).filter(([_, selected]) => selected).length &&
-                        `${window.location.href}ics/2022/artist/?q=${Buffer.from(
-                            JSON.stringify(
-                                Object.entries(selections)
-                                    .filter(([_, selected]) => selected)
-                                    .map(([name, _]) => name)
-                            )
-                        ).toString("base64")}`}
+                    {Object.entries(selections).filter(([_, selected]) => selected).length ? (
+                        <a
+                            href={`webcal://${window.location.host}/ics/2022/artist/?q=${Buffer.from(
+                                JSON.stringify(
+                                    Object.entries(selections)
+                                        .filter(([_, selected]) => selected)
+                                        .map(([name, _]) => name)
+                                )
+                            ).toString("base64")}`}
+                        >
+                            Add to calendar
+                        </a>
+                    ) : (
+                        "Select acts to add them to your calendar"
+                    )}
                 </div>
             </form>
         </div>
