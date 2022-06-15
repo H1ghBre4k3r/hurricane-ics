@@ -66,7 +66,7 @@ const App = () => {
                         </div>
                     );
                 })}
-                <div>
+                <div className="justify-center flex justify-self-center w-fit m-auto p-4 rounded-2xl shadow-md">
                     {Object.entries(selections).filter(([_, selected]) => selected).length ? (
                         <a
                             href={`webcal://${window.location.host}/ics/2022/artist/?q=${Buffer.from(
