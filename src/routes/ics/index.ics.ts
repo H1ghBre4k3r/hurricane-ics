@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import ical from "ical-generator";
-import { FetchFestivalFn } from "../types";
-import { eventFactory } from "../utils";
+import { FetchFestivalFn } from "../../types";
+import { eventFactory } from "../../utils";
 
-export const handleGetIndexFactory = (fetchFestival: FetchFestivalFn) => {
+export const handleGetIndexIcsFactory = (fetchFestival: FetchFestivalFn) => {
     return async (_req: Request, res: Response) => {
         const calendar = ical({ name: "Hurricane Calendar" });
         const festival = await fetchFestival();

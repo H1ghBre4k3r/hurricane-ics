@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import ical from "ical-generator";
-import { FetchFestivalFn } from "../types";
-import { eventFactory } from "../utils";
+import { FetchFestivalFn } from "../../types";
+import { eventFactory } from "../../utils";
 
-export const handleGetArtistFactory = (fetchFestival: FetchFestivalFn) => {
+export const handleGetArtistIcsFactory = (fetchFestival: FetchFestivalFn) => {
     return async (req: Request, res: Response) => {
         try {
             const artists: string[] = JSON.parse(Buffer.from(req.query["q"] as string, "base64").toString("ascii"));

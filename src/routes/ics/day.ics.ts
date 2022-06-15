@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import ical from "ical-generator";
-import { Day, FetchFestivalFn } from "../types";
-import { eventFactory } from "../utils";
+import { Day, FetchFestivalFn } from "../../types";
+import { eventFactory } from "../../utils";
 
 const days: { [key: string]: number } = {
     thursday: 0,
@@ -10,7 +10,7 @@ const days: { [key: string]: number } = {
     sunday: 3,
 };
 
-export function handleGetDayFactory(fetchFestival: FetchFestivalFn) {
+export function handleGetDayIcsFactory(fetchFestival: FetchFestivalFn) {
     return async (req: Request, res: Response) => {
         const day = req.params["day"];
         if (!day || days[day] === undefined) {
