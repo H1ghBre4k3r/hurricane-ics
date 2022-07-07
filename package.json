@@ -23,7 +23,7 @@
         "cors": "^2.8.5",
         "dayjs": "^1.11.3",
         "ical-generator": "^3.4.3",
-        "moment": "^2.29.3",
+        "moment": "^2.29.4",
         "moment-timezone": "^0.5.34",
         "node-fetch": "^2.6.7",
         "rrule": "^2.7.0"
