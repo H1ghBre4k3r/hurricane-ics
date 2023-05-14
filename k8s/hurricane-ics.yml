@@ -1,61 +1,61 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    labels:
-        io.kompose.service: hurricane-ics-deployment
-    name: hurricane-ics-deployment
-    namespace: hurricane-ics
+  labels:
+    io.kompose.service: hurricane-ics-deployment
+  name: hurricane-ics-deployment
+  namespace: hurricane-ics
 spec:
-    replicas: 1
-    selector:
-        matchLabels:
-            io.kompose.service: hurricane-ics-deployment
-    strategy: {}
-    template:
-        metadata:
-            labels:
-                io.kompose.service: hurricane-ics-deployment
-        spec:
-            containers:
-                - image: ghcr.io/h1ghbre4k3r/hurricane-ics
-                  imagePullPolicy: Always
-                  name: hurricane-ics-deployment
-                  ports:
-                      - containerPort: 3000
-                  resources: {}
-            restartPolicy: Always
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: hurricane-ics-deployment
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        io.kompose.service: hurricane-ics-deployment
+    spec:
+      containers:
+        - image: ghcr.io/h1ghbre4k3r/hurricane-ics
+          imagePullPolicy: Always
+          name: hurricane-ics-deployment
+          ports:
+            - containerPort: 3000
+          resources: {}
+      restartPolicy: Always
 status: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-    labels:
-        io.kompose.service: hurricane-ics-service
-    name: hurricane-ics-service
-    namespace: hurricane-ics
+  labels:
+    io.kompose.service: hurricane-ics-service
+  name: hurricane-ics-service
+  namespace: hurricane-ics
 spec:
-    ports:
-        - protocol: TCP
-          name: web
-          port: 3000
-    selector:
-        io.kompose.service: hurricane-ics-deployment
+  ports:
+    - protocol: TCP
+      name: web
+      port: 3000
+  selector:
+    io.kompose.service: hurricane-ics-deployment
 status:
-    loadBalancer: {}
+  loadBalancer: {}
 ---
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
-    name: hurricane-ics-ingress
-    namespace: hurricane-ics
+  name: hurricane-ics-ingress
+  namespace: hurricane-ics
 spec:
-    entryPoints:
-        - websecure
-    routes:
-        - match: Host(`hurricane.inf-cau.de`)
-          kind: Rule
-          services:
-              - name: hurricane-ics-service
-                port: 3000
-    tls:
-        certResolver: le
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`k3s.lome.dev`)
+      kind: Rule
+      services:
+        - name: hurricane-ics-service
+          port: 3000
+  tls:
+    certResolver: le
