@@ -31,15 +31,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GH_PAT }}
 
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/H1ghBre4k3r/hurricane-ics
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
+
       - name: set lower case owner name
         run: |
           echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
         env:
           OWNER: "${{ github.repository_owner }}"
 
-      - name: Build and Push Docker Image
+      - name: Build and Push image
         uses: docker/build-push-action@v2
         with:
           context: .
-          push: true
-          tags: ghcr.io/${{ env.OWNER_LC }}/hurricane-ics:latest
+          platforms: linux/amd64,linux/arm64/v8
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
