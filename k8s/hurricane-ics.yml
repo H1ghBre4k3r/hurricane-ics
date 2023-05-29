@@ -52,7 +52,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`hurricane.inf-cau.de`)
+    - match: Host(`hurricane.lome.dev`)
       kind: Rule
       services:
         - name: hurricane-ics-service

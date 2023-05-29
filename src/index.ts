@@ -18,12 +18,12 @@ const icsRouter = Router();
 icsRouter.get("/", handleGetIndexIcsFactory(fetchFestival));
 icsRouter.get("/day/:day", handleGetDayIcsFactory(fetchFestival));
 icsRouter.get("/artist", handleGetArtistIcsFactory(fetchFestival));
-server.use("/ics/2022", icsRouter);
+server.use("/ics/2023", icsRouter);
 
 const apiRouter = Router();
 apiRouter.get("/concerts", handleGetConcertsApiFactory(fetchFestival));
 server.use("/api", apiRouter);
 
 server.listen(3000, () => {
-    console.log(`Started listening on port :3000`);
+  console.log(`Started listening on port :3000`);
 });

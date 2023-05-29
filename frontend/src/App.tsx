@@ -6,86 +6,90 @@ import { Artist } from "./Artist";
 import { parseDate } from "./utils";
 
 type FestivalDay = {
-    day: string;
-    events: Show[];
+  day: string;
+  events: Show[];
 };
 
 const App = () => {
-    const [festival, setFestival] = useState<FestivalDay[]>([]);
+  const [festival, setFestival] = useState<FestivalDay[]>([]);
 
-    const [selections, setSelections] = useState<{ [key: string]: boolean }>({});
+  const [selections, setSelections] = useState<{ [key: string]: boolean }>({});
 
-    useEffect(() => {
-        fetch("/api/concerts")
-            .then((val) => val.json())
-            .then((festival: FestivalPlan) => {
-                const days = festival.shows
-                    .sort((a, b) => (a.date_timestamp > b.date_timestamp ? 1 : -1))
-                    .reduce<FestivalDay[]>((memo, cur) => {
-                        if (!memo.length || memo[memo.length - 1].day !== cur.date_start) {
-                            memo.push({ day: cur.date_start, events: [] });
-                        }
-                        memo[memo.length - 1].events.push(cur);
-                        return memo;
-                    }, []);
-                setFestival(days);
-            });
-    }, [setFestival]);
+  useEffect(() => {
+    fetch("/api/concerts")
+      .then((val) => val.json())
+      .then((festival: FestivalPlan) => {
+        console.log(festival);
+        const days = festival.shows
+          .sort((a, b) => (a.date_timestamp > b.date_timestamp ? 1 : -1))
+          .reduce<FestivalDay[]>((memo, cur) => {
+            if (!memo.length || memo[memo.length - 1].day !== cur.date_start) {
+              memo.push({ day: cur.date_start, events: [] });
+            }
+            memo[memo.length - 1].events.push(cur);
+            return memo;
+          }, []);
+        setFestival(days);
+      });
+  }, [setFestival]);
 
-    return (
-        <div>
-            <form>
-                {festival.map((day, i) => {
+  return (
+    <div>
+      <form>
+        {festival.map((day, i) => {
+          return (
+            <div key={day.day} className="mx-autorounded-md">
+              <details className=" duration-300" open={!i}>
+                <summary className="bg-inherit px-5 py-3 text-lg cursor-pointer">
+                  {parseDate(day.day, "00:00").toLocaleDateString()}
+                </summary>
+                <div className="bg-white px-5 py-3 text-sm font-light">
+                  {day.events.map((show) => {
                     return (
-                        <div key={day.day} className="mx-autorounded-md">
-                            <details className=" duration-300" open={!i}>
-                                <summary className="bg-inherit px-5 py-3 text-lg cursor-pointer">
-                                    {parseDate(day.day, "00:00").toLocaleDateString()}
-                                </summary>
-                                <div className="bg-white px-5 py-3 text-sm font-light">
-                                    {day.events.map((show) => {
-                                        return (
-                                            <Artist
-                                                show={show}
-                                                key={show.artist.name}
-                                                selected={!!selections[show.artist.name]}
-                                                setSelected={(selected) => {
-                                                    setSelections((curSelections) => {
-                                                        const newSelections = {
-                                                            ...curSelections,
-                                                        };
-                                                        newSelections[show.artist.name] = selected;
-                                                        return newSelections;
-                                                    });
-                                                }}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            </details>
-                        </div>
+                      <Artist
+                        show={show}
+                        key={show.artist.name}
+                        selected={!!selections[show.artist.name]}
+                        setSelected={(selected) => {
+                          setSelections((curSelections) => {
+                            const newSelections = {
+                              ...curSelections,
+                            };
+                            newSelections[show.artist.name] = selected;
+                            return newSelections;
+                          });
+                        }}
+                      />
                     );
-                })}
-                <div className="justify-center flex justify-self-center w-fit m-auto p-4 rounded-2xl shadow-md">
-                    {Object.entries(selections).filter(([_, selected]) => selected).length ? (
-                        <a
-                            href={`webcal://${window.location.host}/ics/2022/artist/?q=${Buffer.from(
-                                JSON.stringify(
-                                    Object.entries(selections)
-                                        .filter(([_, selected]) => selected)
-                                        .map(([name, _]) => name)
-                                )
-                            ).toString("base64")}`}
-                        >
-                            Add to calendar
-                        </a>
-                    ) : (
-                        "Select acts to add them to your calendar"
-                    )}
+                  })}
                 </div>
-            </form>
+              </details>
+            </div>
+          );
+        })}
+        <div className="justify-center flex justify-self-center w-fit m-auto p-4 rounded-2xl shadow-md">
+          {Object.entries(selections).filter(([_, selected]) => selected)
+            .length ? (
+            <a
+              href={`webcal://${
+                window.location.host
+              }/ics/2023/artist/?q=${Buffer.from(
+                JSON.stringify(
+                  Object.entries(selections)
+                    .filter(([_, selected]) => selected)
+                    .map(([name, _]) => name)
+                )
+              ).toString("base64")}`}
+            >
+              Add to calendar
+            </a>
+          ) : (
+            "Select acts to add them to your calendar"
+          )}
         </div>
-    );
+      </form>
+    </div>
+  );
 };
 
 export default App;
