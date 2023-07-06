@@ -23,6 +23,11 @@ spec:
             - containerPort: 3000
           resources: {}
       restartPolicy: Always
+      tolerations:
+        - key: "nodetype"
+          operator: "Equal"
+          value: "storage"
+          effect: "NoExecute"
 status: {}
 ---
 apiVersion: v1
