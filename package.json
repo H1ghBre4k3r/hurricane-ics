@@ -27,6 +27,6 @@
         "moment": "^2.29.4",
         "moment-timezone": "^0.5.43",
         "node-fetch": "^2.6.7",
-        "rrule": "^2.7.2"
+        "rrule": "^2.8.1"
     }
 }
