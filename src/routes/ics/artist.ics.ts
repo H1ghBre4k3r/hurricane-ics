@@ -7,7 +7,7 @@ export const handleGetArtistIcsFactory = (fetchFestival: FetchFestivalFn) => {
   return async (req: Request, res: Response) => {
     try {
       const artists: string[] = JSON.parse(
-        Buffer.from(req.query["q"] as string, "base64").toString("ascii")
+        Buffer.from(req.query["q"] as string, "base64").toString("ascii"),
       );
       const festival = await fetchFestival();
       const concerts = festival.shows
@@ -16,7 +16,7 @@ export const handleGetArtistIcsFactory = (fetchFestival: FetchFestivalFn) => {
 
       const calendar = ical({ name: `Hurricane (${artists.join("; ")})` });
       calendar.events(concerts);
-      calendar.serve(res);
+      res.end(calendar.toString());
     } catch (e) {
       console.error(e);
       res.sendStatus(400);

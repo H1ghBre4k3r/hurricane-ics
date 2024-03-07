@@ -9,6 +9,6 @@ export const handleGetIndexIcsFactory = (fetchFestival: FetchFestivalFn) => {
     const festival = await fetchFestival();
     const concerts = festival.shows.map((show) => eventFactory(show));
     calendar.events(concerts);
-    calendar.serve(res);
+    res.end(calendar.toString());
   };
 };

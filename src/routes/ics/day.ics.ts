@@ -31,6 +31,6 @@ export function handleGetDayIcsFactory(fetchFestival: FetchFestivalFn) {
       .filter((show) => show.date_start === `2206${16 + dayIndex}`)
       .map((show) => eventFactory(show));
     calendar.events(concerts);
-    calendar.serve(res);
+    res.end(calendar.toString());
   };
 }
