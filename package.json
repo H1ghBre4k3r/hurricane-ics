@@ -17,7 +17,7 @@
         "@types/luxon": "^3.4.2",
         "@types/node": "^20.11.30",
         "@types/node-fetch": "^2.6.1",
-        "express": "^4.19.1",
+        "express": "^4.19.2",
         "typescript": "^5.4.3"
     },
     "dependencies": {
