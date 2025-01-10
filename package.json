@@ -23,7 +23,7 @@
     "dependencies": {
         "cors": "^2.8.5",
         "dayjs": "^1.11.13",
-        "ical-generator": "^8.0.1",
+        "ical-generator": "^8.1.0",
         "moment": "^2.30.1",
         "moment-timezone": "^0.5.46",
         "node-fetch": "^2.6.7",
