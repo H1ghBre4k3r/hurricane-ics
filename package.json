@@ -12,7 +12,7 @@
     "author": "Louis Meyer <h1ghbre4k3r@dev.bre4k3r.de> (H1ghBre4k3r)",
     "license": "GPL-3.0",
     "devDependencies": {
-        "@types/cors": "^2.8.17",
+        "@types/cors": "^2.8.18",
         "@types/express": "^5.0.1",
         "@types/luxon": "^3.6.2",
         "@types/node": "^22.14.1",
