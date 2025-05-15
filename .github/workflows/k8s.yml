@@ -19,12 +19,12 @@ jobs:
         with:
           method: kubeconfig
           kubeconfig: ${{ secrets.K8S_CONFIG }}
-      # - uses: Azure/k8s-deploy@v1.4
+      # - uses: Azure/k8s-deploy@v4.10
       #   with:
       #     manifests: |
       #       k8s/hurricane-namespace.yml
       #     kubectl-version: "latest"
-      - uses: Azure/k8s-deploy@v1.4
+      - uses: Azure/k8s-deploy@v4.10
         with:
           manifests: |
             k8s/hurricane-ics.yml
