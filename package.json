@@ -15,7 +15,7 @@
         "@types/cors": "^2.8.18",
         "@types/express": "^5.0.1",
         "@types/luxon": "^3.6.2",
-        "@types/node": "^22.15.17",
+        "@types/node": "^22.15.30",
         "@types/node-fetch": "^2.6.1",
         "express": "^5.1.0",
         "typescript": "^5.8.3"
