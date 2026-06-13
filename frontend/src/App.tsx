@@ -40,6 +40,18 @@ const formatDateRange = (days: FestivalDay[]): string => {
   return `${formatter.format(first)} - ${formatter.format(last)}`;
 };
 
+const formatFestivalTitle = (days: FestivalDay[]): string => {
+  const years = Array.from(
+    new Set(days.map((day) => parseDate(day.day, "00:00").getFullYear())),
+  ).sort();
+
+  if (!years.length) {
+    return "Hurricane";
+  }
+
+  return `Hurricane ${years.join("/")}`;
+};
+
 const App = () => {
   const [festival, setFestival] = useState<FestivalDay[]>([]);
   const [fetchState, setFetchState] = useState<FetchState>("loading");
@@ -104,6 +116,7 @@ const App = () => {
   const activeFestivalDay = festival.find((day) => day.day === activeDay);
   const totalShows = festival.reduce((sum, day) => sum + day.events.length, 0);
   const dateRange = formatDateRange(festival);
+  const festivalTitle = formatFestivalTitle(festival);
 
   return (
     <main className="festival-app">
@@ -112,7 +125,7 @@ const App = () => {
           <p className="hero__eyebrow">Personal festival calendar</p>
           <div className="hero__headline-row">
             <div>
-              <h1>Hurricane 2026</h1>
+              <h1>{festivalTitle}</h1>
               <p className="hero__subtitle">{dateRange}</p>
             </div>
             <div className="hero__summary" aria-live="polite">

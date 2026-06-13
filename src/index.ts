@@ -19,7 +19,7 @@ icsRouter.get("/", handleGetIndexIcsFactory(fetchFestival));
 icsRouter.get("/day/:day", handleGetDayIcsFactory(fetchFestival));
 icsRouter.get("/artist", handleGetArtistIcsFactory(fetchFestival));
 
-server.use("/ics/2023", icsRouter);
+server.use(/^\/ics\/\d{4}/, icsRouter);
 server.use("/ics", icsRouter);
 
 const apiRouter = Router();
