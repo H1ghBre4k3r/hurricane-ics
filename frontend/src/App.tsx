@@ -73,7 +73,7 @@ const App = () => {
             <a
               href={`webcal://${
                 window.location.host
-              }/ics/2023/artist/?q=${Buffer.from(
+              }/ics/artist/?q=${Buffer.from(
                 JSON.stringify(
                   Object.entries(selections)
                     .filter(([_, selected]) => selected)

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import ical from "ical-generator";
-import { Day, FetchFestivalFn } from "../../types";
+import { FetchFestivalFn } from "../../types";
 import { eventFactory } from "../../utils";
 
 const days: { [key: string]: number } = {
@@ -18,8 +18,6 @@ export function handleGetDayIcsFactory(fetchFestival: FetchFestivalFn) {
       return;
     }
 
-    const dayIndex = days[day] as Day;
-
     // generate appropriate calendar name suggestion
     const calendar = ical({
       name: `Hurricane Calendar ${
@@ -27,8 +25,18 @@ export function handleGetDayIcsFactory(fetchFestival: FetchFestivalFn) {
       }`,
     });
     const festival = await fetchFestival();
+    const festivalDates = Array.from(
+      new Set(festival.shows.map((show) => show.date_start)),
+    ).sort();
+    const dateStart = festivalDates[days[day]];
+
+    if (!dateStart) {
+      res.sendStatus(404);
+      return;
+    }
+
     const concerts = festival.shows
-      .filter((show) => show.date_start === `2206${16 + dayIndex}`)
+      .filter((show) => show.date_start === dateStart)
       .map((show) => eventFactory(show));
     calendar.events(concerts);
     res.end(calendar.toString());
