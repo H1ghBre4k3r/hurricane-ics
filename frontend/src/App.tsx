@@ -52,6 +52,12 @@ const formatFestivalTitle = (days: FestivalDay[]): string => {
   return `Hurricane ${years.join("/")}`;
 };
 
+const encodeArtists = (artists: string[]): string => {
+  return encodeURIComponent(
+    Buffer.from(JSON.stringify(artists)).toString("base64"),
+  );
+};
+
 const App = () => {
   const [festival, setFestival] = useState<FestivalDay[]>([]);
   const [fetchState, setFetchState] = useState<FetchState>("loading");
@@ -108,10 +114,11 @@ const App = () => {
   );
 
   const calendarHref = selectedArtists.length
-    ? `webcal://${window.location.host}/ics/artist/?q=${Buffer.from(
-        JSON.stringify(selectedArtists),
-      ).toString("base64")}`
+    ? `webcal://${window.location.host}/ics/artist/?q=${encodeArtists(
+        selectedArtists,
+      )}`
     : "";
+  const fullCalendarHref = `webcal://${window.location.host}/ics`;
 
   const activeFestivalDay = festival.find((day) => day.day === activeDay);
   const totalShows = festival.reduce((sum, day) => sum + day.events.length, 0);
@@ -142,6 +149,11 @@ const App = () => {
             <span>{festival.length || "--"} days</span>
             <span>{totalShows || "--"} shows</span>
             <span>{selectedArtists.length} picks</span>
+          </div>
+          <div className="hero__actions">
+            <a className="calendar-button calendar-button--light" href={fullCalendarHref}>
+              Subscribe to full lineup
+            </a>
           </div>
         </div>
       </section>

@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import ical from "ical-generator";
+import ical, { ICalCalendarMethod } from "ical-generator";
 import { FetchFestivalFn } from "../../types";
 import { eventFactory } from "../../utils";
+import { sendCalendar } from "./response";
 
 export const handleGetArtistIcsFactory = (fetchFestival: FetchFestivalFn) => {
   return async (req: Request, res: Response) => {
@@ -14,9 +15,12 @@ export const handleGetArtistIcsFactory = (fetchFestival: FetchFestivalFn) => {
         .filter((show) => artists.includes(show.artist.name))
         .map((event) => eventFactory(event));
 
-      const calendar = ical({ name: `Hurricane (${artists.join("; ")})` });
+      const calendar = ical({
+        method: ICalCalendarMethod.PUBLISH,
+        name: `Hurricane (${artists.join("; ")})`,
+      });
       calendar.events(concerts);
-      res.end(calendar.toString());
+      sendCalendar(res, calendar, "hurricane-artists.ics");
     } catch (e) {
       console.error(e);
       res.sendStatus(400);

@@ -133,6 +133,13 @@ a {
   padding: 8px 13px;
 }
 
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
 .schedule {
   margin: 0 auto;
   max-width: 1120px;
@@ -353,6 +360,19 @@ a {
   background: #09534e;
   border-color: #09534e;
   outline: none;
+}
+
+.calendar-button--light {
+  background: #f7fbf5;
+  border-color: #f7fbf5;
+  color: #0d4f4a;
+}
+
+.calendar-button--light:hover,
+.calendar-button--light:focus-visible {
+  background: #d8ebe4;
+  border-color: #d8ebe4;
+  color: #0d4f4a;
 }
 
 .calendar-button--disabled,

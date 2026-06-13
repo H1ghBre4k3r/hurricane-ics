@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import ical from "ical-generator";
+import ical, { ICalCalendarMethod } from "ical-generator";
 import { FetchFestivalFn } from "../../types";
 import { eventFactory } from "../../utils";
+import { sendCalendar } from "./response";
 
 const days: { [key: string]: number } = {
   thursday: 0,
@@ -20,6 +21,7 @@ export function handleGetDayIcsFactory(fetchFestival: FetchFestivalFn) {
 
     // generate appropriate calendar name suggestion
     const calendar = ical({
+      method: ICalCalendarMethod.PUBLISH,
       name: `Hurricane Calendar ${
         day.charAt(0).toUpperCase() + day.substring(1)
       }`,
@@ -39,6 +41,6 @@ export function handleGetDayIcsFactory(fetchFestival: FetchFestivalFn) {
       .filter((show) => show.date_start === dateStart)
       .map((show) => eventFactory(show));
     calendar.events(concerts);
-    res.end(calendar.toString());
+    sendCalendar(res, calendar, `hurricane-${day}.ics`);
   };
 }

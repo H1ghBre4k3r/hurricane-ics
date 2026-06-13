@@ -1,14 +1,18 @@
 import { Request, Response } from "express";
-import ical from "ical-generator";
+import ical, { ICalCalendarMethod } from "ical-generator";
 import { FetchFestivalFn } from "../../types";
 import { eventFactory } from "../../utils";
+import { sendCalendar } from "./response";
 
 export const handleGetIndexIcsFactory = (fetchFestival: FetchFestivalFn) => {
   return async (_req: Request, res: Response) => {
-    const calendar = ical({ name: "Hurricane Calendar" });
+    const calendar = ical({
+      method: ICalCalendarMethod.PUBLISH,
+      name: "Hurricane Calendar",
+    });
     const festival = await fetchFestival();
     const concerts = festival.shows.map((show) => eventFactory(show));
     calendar.events(concerts);
-    res.end(calendar.toString());
+    sendCalendar(res, calendar, "hurricane.ics");
   };
 };
