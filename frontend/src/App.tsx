@@ -210,10 +210,14 @@ const App = () => {
   );
 
   useEffect(() => {
-    window.localStorage.setItem(
-      SELECTIONS_STORAGE_KEY,
-      JSON.stringify(selectedArtists),
-    );
+    try {
+      window.localStorage.setItem(
+        SELECTIONS_STORAGE_KEY,
+        JSON.stringify(selectedArtists),
+      );
+    } catch {
+      // Browsers can reject storage writes in private or locked-down modes.
+    }
   }, [selectedArtists]);
 
   const stageOptions = useMemo(
