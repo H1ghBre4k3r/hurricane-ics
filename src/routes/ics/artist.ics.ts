@@ -8,7 +8,7 @@ export const handleGetArtistIcsFactory = (fetchFestival: FetchFestivalFn) => {
   return async (req: Request, res: Response) => {
     try {
       const artists: string[] = JSON.parse(
-        Buffer.from(req.query["q"] as string, "base64").toString("ascii"),
+        Buffer.from(req.query["q"] as string, "base64").toString("utf8"),
       );
       const festival = await fetchFestival();
       const concerts = festival.shows
