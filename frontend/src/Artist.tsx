@@ -8,25 +8,60 @@ type ArtistProps = {
   setSelected: (selected: boolean) => void;
 };
 
-export const Artist: FC<ArtistProps> = ({ show, selected, setSelected }) => {
-  let name = show.artist.name;
+const formatTime = (show: Show): string => {
   const start = parseDate(show.date_start, show.time_start);
+  const end = parseDate(show.date_start, show.time_end);
+
+  while (end < start) {
+    end.setDate(end.getDate() + 1);
+  }
+
+  const formatter = new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return `${formatter.format(start)} - ${formatter.format(end)}`;
+};
+
+const getImageUrl = (image: string): string => {
+  if (!image) {
+    return "";
+  }
+
+  return image.startsWith("http") ? image : `https://hurricane.de${image}`;
+};
+
+export const Artist: FC<ArtistProps> = ({ show, selected, setSelected }) => {
+  const name = show.artist.name;
+  const imageUrl = getImageUrl(show.artist.image);
+
   return (
-    <div
+    <button
+      type="button"
+      aria-pressed={selected}
       onClick={() => setSelected(!selected)}
-      className={`inline-block bg-white dark:bg-slate-800 rounded-lg px-2 py-2 ring-1 m-2 w-fit ring-slate-900/5 shadow-xl ${
-        selected ? "border-blue-400" : "border-white dark:border-slate-800"
-      } border-4 `}
+      className={`artist-card ${selected ? "artist-card--selected" : ""}`}
     >
-      <h3 className="text-slate-900 dark:text-white text-base font-medium tracking-tight">
-        {name}
-      </h3>
-      <p className="text-slate-500 dark:text-slate-400  text-sm">
-        {start.toLocaleString()}
-      </p>
-      <p className="text-slate-500 dark:text-slate-400  text-sm">
-        {show.stage.name}
-      </p>
-    </div>
+      <span className="artist-card__media" aria-hidden="true">
+        {imageUrl ? (
+          <img src={imageUrl} alt="" loading="lazy" />
+        ) : (
+          <span className="artist-card__fallback">{name.charAt(0)}</span>
+        )}
+        <span className="artist-card__time">{formatTime(show)}</span>
+      </span>
+
+      <span className="artist-card__body">
+        <span className="artist-card__meta">
+          <span>{show.stage.name}</span>
+          <span>{show.category.name}</span>
+        </span>
+        <span className="artist-card__title">{name}</span>
+        <span className="artist-card__select">
+          {selected ? "Selected" : "Add to calendar"}
+        </span>
+      </span>
+    </button>
   );
 };
