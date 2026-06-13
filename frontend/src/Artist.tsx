@@ -5,6 +5,7 @@ import { parseDate } from "./utils";
 type ArtistProps = {
   show: Show;
   selected: boolean;
+  hasConflict: boolean;
   setSelected: (selected: boolean) => void;
 };
 
@@ -32,7 +33,12 @@ const getImageUrl = (image: string): string => {
   return image.startsWith("http") ? image : `https://hurricane.de${image}`;
 };
 
-export const Artist: FC<ArtistProps> = ({ show, selected, setSelected }) => {
+export const Artist: FC<ArtistProps> = ({
+  show,
+  selected,
+  hasConflict,
+  setSelected,
+}) => {
   const name = show.artist.name;
   const imageUrl = getImageUrl(show.artist.image);
 
@@ -41,7 +47,9 @@ export const Artist: FC<ArtistProps> = ({ show, selected, setSelected }) => {
       type="button"
       aria-pressed={selected}
       onClick={() => setSelected(!selected)}
-      className={`artist-card ${selected ? "artist-card--selected" : ""}`}
+      className={`artist-card ${selected ? "artist-card--selected" : ""} ${
+        hasConflict ? "artist-card--conflict" : ""
+      }`}
     >
       <span className="artist-card__media" aria-hidden="true">
         {imageUrl ? (
@@ -61,6 +69,9 @@ export const Artist: FC<ArtistProps> = ({ show, selected, setSelected }) => {
         <span className="artist-card__select">
           {selected ? "Selected" : "Add to calendar"}
         </span>
+        {hasConflict && (
+          <span className="artist-card__conflict">Time conflict</span>
+        )}
       </span>
     </button>
   );

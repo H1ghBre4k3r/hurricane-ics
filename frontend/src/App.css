@@ -154,6 +154,14 @@ a {
   margin-bottom: 20px;
 }
 
+.schedule__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .schedule__header h2,
 .state-panel h2 {
   color: #17211f;
@@ -170,6 +178,117 @@ a {
   gap: 10px;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   margin-bottom: 22px;
+}
+
+.planner-panel {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(32, 55, 51, 0.14);
+  border-radius: 8px;
+  box-shadow: 0 14px 40px rgba(24, 43, 39, 0.06);
+  display: grid;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding: 16px;
+}
+
+.search-field {
+  display: grid;
+  gap: 8px;
+}
+
+.search-field span {
+  color: #60746e;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.search-field input {
+  background: #ffffff;
+  border: 1px solid rgba(32, 55, 51, 0.18);
+  border-radius: 8px;
+  color: #17211f;
+  font: inherit;
+  min-height: 48px;
+  padding: 0 14px;
+  width: 100%;
+}
+
+.search-field input:focus {
+  border-color: #0d6b65;
+  box-shadow: 0 0 0 3px rgba(13, 107, 101, 0.14);
+  outline: none;
+}
+
+.filter-row,
+.planner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-chip,
+.toggle-button,
+.ghost-button {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid rgba(32, 55, 51, 0.16);
+  border-radius: 999px;
+  color: #17211f;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 13px;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.filter-chip:hover,
+.filter-chip:focus-visible,
+.toggle-button:hover,
+.toggle-button:focus-visible,
+.ghost-button:hover,
+.ghost-button:focus-visible {
+  border-color: #d85c49;
+  outline: none;
+}
+
+.filter-chip--active,
+.toggle-button--active {
+  background: #172522;
+  border-color: #172522;
+  color: #ffffff;
+}
+
+.ghost-button {
+  background: transparent;
+}
+
+.ghost-button--light {
+  border-color: rgba(247, 251, 245, 0.34);
+  color: #f7fbf5;
+}
+
+.ghost-button--light:hover,
+.ghost-button--light:focus-visible {
+  background: rgba(247, 251, 245, 0.12);
+  border-color: #f7fbf5;
+}
+
+.ghost-button:disabled,
+.ghost-button--disabled,
+.ghost-button--disabled:hover {
+  border-color: rgba(32, 55, 51, 0.12);
+  color: #8ba099;
+  cursor: default;
+  pointer-events: none;
 }
 
 .day-tab {
@@ -247,6 +366,10 @@ a {
   box-shadow:
     0 0 0 2px rgba(13, 107, 101, 0.16),
     0 18px 48px rgba(24, 43, 39, 0.12);
+}
+
+.artist-card--conflict {
+  border-color: rgba(216, 92, 73, 0.84);
 }
 
 .artist-card__media {
@@ -338,6 +461,18 @@ a {
   color: #0d6b65;
 }
 
+.artist-card__conflict {
+  align-self: flex-start;
+  background: rgba(216, 92, 73, 0.12);
+  border-radius: 999px;
+  color: #a33f31;
+  font-size: 0.75rem;
+  font-weight: 900;
+  margin-top: 8px;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
 .calendar-button {
   align-items: center;
   background: #0d6b65;
@@ -416,6 +551,10 @@ a {
   border-color: rgba(216, 92, 73, 0.42);
 }
 
+.state-panel--compact {
+  min-height: 150px;
+}
+
 .mobile-action {
   align-items: center;
   background: rgba(255, 255, 255, 0.94);
@@ -450,6 +589,17 @@ a {
   white-space: nowrap;
 }
 
+.copy-state {
+  color: #0d6b65;
+  font-weight: 800;
+}
+
+.mobile-action__buttons {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
 @keyframes pulse {
   0%,
   100% {
@@ -482,6 +632,10 @@ a {
   .mobile-action {
     display: none;
   }
+
+  .planner-panel {
+    padding: 18px;
+  }
 }
 
 @media (min-width: 1020px) {
@@ -504,6 +658,10 @@ a {
 
 @media (max-width: 719px) {
   .calendar-button--desktop {
+    display: none;
+  }
+
+  .ghost-button--desktop {
     display: none;
   }
 
@@ -534,5 +692,14 @@ a {
   .artist-card {
     grid-template-columns: 104px minmax(0, 1fr);
     min-height: 142px;
+  }
+
+  .planner-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .planner-actions .toggle-button {
+    grid-column: 1 / -1;
   }
 }
