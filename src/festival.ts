@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import { FestivalPlan, Show } from "./types";
+import { FestivalFetchStatus, FestivalPlan, FestivalDateRange, Show } from "./types";
 
 const LINEUP_URL = "https://hurricane.de/line-up/";
 
@@ -11,13 +11,19 @@ function diff_minutes(dt2: Date, dt1: Date) {
 
 const decodeHtml = (value: string): string => {
   const namedEntities: { [key: string]: string } = {
+    Auml: "Ä",
     amp: "&",
     apos: "'",
+    auml: "ä",
     gt: ">",
     lt: "<",
     nbsp: " ",
+    Ouml: "Ö",
+    ouml: "ö",
     quot: '"',
     szlig: "ß",
+    Uuml: "Ü",
+    uuml: "ü",
   };
 
   return value.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (_, entity) => {
@@ -87,6 +93,21 @@ const collectMatches = (regex: RegExp, value: string): RegExpExecArray[] => {
   return matches;
 };
 
+const getLineupDateRange = (festival: FestivalPlan | null): FestivalDateRange | null => {
+  if (!festival?.shows.length) {
+    return null;
+  }
+
+  const dates = Array.from(
+    new Set(festival.shows.map((show) => show.date_start)),
+  ).sort();
+
+  return {
+    start: dates[0],
+    end: dates[dates.length - 1],
+  };
+};
+
 export const parseFestivalPlan = (raw: string): FestivalPlan => {
   const year = parseLineupYear(raw);
   const shows: Show[] = [];
@@ -153,12 +174,17 @@ export const fetchFestivalFactory = () => {
   let last_fetch: Date = new Date();
 
   let cache: FestivalPlan | null = null;
+  let lastSuccessfulFetch: Date | null = null;
+  let lastAttemptedFetch: Date | null = null;
+  let lastError: string | null = null;
 
-  return async (): Promise<FestivalPlan> => {
+  const fetchFestival = async (): Promise<FestivalPlan> => {
     const now = new Date();
     const diff = diff_minutes(now, last_fetch);
 
     if (diff > 15 || cache === null) {
+      lastAttemptedFetch = now;
+
       try {
         const response = await fetch(LINEUP_URL);
         if (!response.ok) {
@@ -173,8 +199,11 @@ export const fetchFestivalFactory = () => {
 
         cache = festival;
         last_fetch = now;
+        lastSuccessfulFetch = now;
+        lastError = null;
       } catch (error) {
         console.error(error);
+        lastError = error instanceof Error ? error.message : String(error);
         if (cache === null) {
           throw error;
         }
@@ -184,4 +213,15 @@ export const fetchFestivalFactory = () => {
 
     return cache as FestivalPlan;
   };
+
+  fetchFestival.getStatus = (): FestivalFetchStatus => ({
+    cacheAvailable: cache !== null,
+    lastSuccessfulFetch: lastSuccessfulFetch?.toISOString() || null,
+    lastAttemptedFetch: lastAttemptedFetch?.toISOString() || null,
+    showCount: cache?.shows.length || 0,
+    lineupDateRange: getLineupDateRange(cache),
+    lastError,
+  });
+
+  return fetchFestival;
 };

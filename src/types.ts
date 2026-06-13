@@ -40,3 +40,19 @@ export type FestivalPlan = {
 };
 
 export type FetchFestivalFn = () => Promise<FestivalPlan>;
+
+export type FestivalDateRange = {
+  start: string;
+  end: string;
+};
+
+export type FestivalFetchStatus = {
+  cacheAvailable: boolean;
+  lastSuccessfulFetch: string | null;
+  lastAttemptedFetch: string | null;
+  showCount: number;
+  lineupDateRange: FestivalDateRange | null;
+  lastError: string | null;
+};
+
+export type GetFestivalStatusFn = () => FestivalFetchStatus;
