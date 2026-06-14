@@ -138,6 +138,11 @@ class MockResponse {
     this.jsonBody = value;
   }
 
+  status(statusCode: number) {
+    this.statusCode = statusCode;
+    return this;
+  }
+
   sendStatus(statusCode: number) {
     this.statusCode = statusCode;
   }
@@ -169,6 +174,26 @@ const buildExpiredScheduleToken = (artists: string[], secret: string): string =>
   const payload = {
     v: 1,
     artists: normalizeArtists(artists),
+    issuedAt,
+    exp,
+  };
+  const payloadJson = JSON.stringify(payload);
+  const payloadEncoded = Buffer.from(payloadJson).toString("base64url");
+  const signature = createHmac("sha256", secret).update(payloadJson).digest("base64url");
+  return `${payloadEncoded}.${signature}`;
+};
+
+const buildSignedScheduleToken = (
+  artists: string[],
+  secret: string,
+  now: number = Date.now(),
+): string => {
+  const ttlMs = 7 * 24 * 60 * 60 * 1000;
+  const issuedAt = now;
+  const exp = now + ttlMs;
+  const payload = {
+    v: 1,
+    artists,
     issuedAt,
     exp,
   };
@@ -349,10 +374,12 @@ test("schedule api creates and retrieves shared selections", async () => {
   );
 });
 
-test("schedule api returns 404 for missing shared schedule", () => {
+test("schedule api returns 404 for invalid signature", () => {
   const getResponse = makeResponse();
+  const secret = process.env.SCHEDULE_SIGNING_SECRET || "hurricane-ics-development-secret";
+  const scheduleId = buildSignedScheduleToken(["UNKNOWN_ARTIST"], secret).replace(/.$/, "x");
   handleGetScheduleFactory(scheduleStore)(
-    { params: { scheduleId: "missing-id" } } as unknown as Request,
+    { params: { scheduleId } } as unknown as Request,
     getResponse,
   );
   assert.equal(getResponse.statusCode, 404);
