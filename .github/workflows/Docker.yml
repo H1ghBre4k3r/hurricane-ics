@@ -12,7 +12,6 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  IMAGE_NAME: ghcr.io/${{ toLower(github.repository_owner) }}/hurricane-ics
   MANIFEST_BRANCH: deploy/k3s-manifests
 
 jobs:
@@ -62,6 +61,18 @@ jobs:
           test -f build/index.js
           test -d frontend/build
           ls -lah build frontend/build
+          echo "SHA=${{ github.sha }}"
+
+      - name: Normalize image name
+        run: |
+          set -euo pipefail
+          owner_lc="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE_NAME=ghcr.io/${owner_lc}/hurricane-ics" >> "${GITHUB_ENV}"
+          echo "IMAGE_NAME set to ghcr.io/${owner_lc}/hurricane-ics"
+        shell: bash
+
+      - name: Verify normalized image name
+        run: |
           echo "IMAGE_NAME=${IMAGE_NAME}"
           echo "SHA=${{ github.sha }}"
 
