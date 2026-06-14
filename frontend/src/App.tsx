@@ -10,6 +10,7 @@ import {
   formatDayLabel,
   groupSelectedShowsByDay,
   normalize,
+  sortShowsByStart,
 } from "./schedule";
 import { parseDate } from "./utils";
 
@@ -131,7 +132,11 @@ const App = () => {
             }
             memo[memo.length - 1].events.push(cur);
             return memo;
-          }, []);
+          }, [])
+          .map((day) => ({
+            ...day,
+            events: sortShowsByStart(day.events),
+          }));
 
         setFestival(days);
         setActiveDay(days[0]?.day || "");

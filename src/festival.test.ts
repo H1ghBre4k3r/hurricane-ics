@@ -24,6 +24,13 @@ const lineupHtml = `
           </a>
         </div>
         <div class="m0132_lineupv2__day" data-day="19-06">
+          <a class="m0132_lineupv2__show" data-category="38" data-stage="533" href="/line-up/act/modestep-live/">
+            <img src="/fileadmin/modestep.jpg" alt="" />
+            <span class="m0132_lineupv2__time">00:45 - 02:00</span>
+            <span class="m0132_lineupv2__artist">MODESTEP (LIVE)</span>
+            <span class="m0132_lineupv2__stage">Wild Coast Stage</span>
+            <span class="m0132_lineupv2__category">Electric Wave x Wild Coast Stage</span>
+          </a>
           <a class="m0132_lineupv2__show" data-category="6" data-stage="545" href="/line-up/act/kraftklub/">
             <img src="/fileadmin/kraftklub.jpg" alt="" />
             <span class="m0132_lineupv2__time">23:00 - 00:30</span>
@@ -40,10 +47,10 @@ const lineupHtml = `
 test("parseFestivalPlan extracts current lineup cards", () => {
   const festival = parseFestivalPlan(lineupHtml);
 
-  assert.equal(festival.shows.length, 3);
+  assert.equal(festival.shows.length, 4);
   assert.deepEqual(
     festival.shows.map((show) => show.date_start),
-    ["260618", "260618", "260619"],
+    ["260618", "260618", "260619", "260619"],
   );
   assert.equal(festival.shows[0].artist.name, "HANSEMÄDCHEN");
   assert.equal(
@@ -55,5 +62,7 @@ test("parseFestivalPlan extracts current lineup cards", () => {
   assert.equal(festival.shows[0].category.name, "Warm-Up Party");
   assert.equal(festival.shows[1].time_start, "23:00");
   assert.equal(festival.shows[1].time_end, "00:15");
-  assert.equal(festival.shows[2].date_timestamp, "2606192300");
+  assert.equal(festival.shows[2].artist.name, "MODESTEP (LIVE)");
+  assert.equal(festival.shows[2].date_timestamp, "2606190045");
+  assert.equal(festival.shows[3].date_timestamp, "2606192300");
 });

@@ -1,6 +1,8 @@
 import { Show } from "../../src/types";
 import { parseDate } from "./utils";
 
+export const FESTIVAL_DAY_ROLLOVER_HOUR = 6;
+
 export type FestivalDay = {
   day: string;
   events: Show[];
@@ -30,8 +32,23 @@ export const formatDayLabel = (rawDay: string): string => {
   }).format(parseDate(rawDay, "00:00"));
 };
 
+export const isFestivalNightRollover = (rawTime: string): boolean => {
+  const [hour] = /(\d+):(\d+)/
+    .exec(rawTime)!
+    .slice(1)
+    .map((d) => parseInt(d, 10));
+
+  return hour < FESTIVAL_DAY_ROLLOVER_HOUR;
+};
+
 export const getShowStart = (show: Show): Date => {
-  return parseDate(show.date_start, show.time_start);
+  const start = parseDate(show.date_start, show.time_start);
+
+  if (isFestivalNightRollover(show.time_start)) {
+    start.setDate(start.getDate() + 1);
+  }
+
+  return start;
 };
 
 export const getShowEnd = (show: Show): Date => {
@@ -55,7 +72,18 @@ export const formatTimeRange = (start: Date, end: Date): string => {
 };
 
 export const formatShowTime = (show: Show): string => {
-  return formatTimeRange(getShowStart(show), getShowEnd(show));
+  const start = getShowStart(show);
+  const timeRange = formatTimeRange(start, getShowEnd(show));
+
+  if (!isFestivalNightRollover(show.time_start)) {
+    return timeRange;
+  }
+
+  const weekday = new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+  }).format(start);
+
+  return `${weekday} ${timeRange}`;
 };
 
 export const showsOverlap = (a: Show, b: Show): boolean => {
@@ -96,7 +124,6 @@ export const buildConflictMap = (selectedShows: Show[]): ShowConflictMap => {
   selectedShows.forEach((show, index) => {
     selectedShows.slice(index + 1).forEach((otherShow) => {
       if (
-        show.date_start !== otherShow.date_start ||
         !showsOverlap(show, otherShow)
       ) {
         return;
