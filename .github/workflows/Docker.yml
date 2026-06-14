@@ -1,33 +1,57 @@
 name: Docker
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/h1ghbre4k3r/hurricane-ics
+  MANIFEST_BRANCH: deploy/k3s-manifests
 
 jobs:
   publish-docker-image:
-    name: Build & Publish Docker Image
+    name: Build, Publish, and Pin Image
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: "npm"
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
 
-      - uses: actions/checkout@v5
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Install dependencies
         run: npm ci
+
       - name: Install frontend dependencies
         run: npm ci
         working-directory: ./frontend
 
-      - name: Build (typecheck) the project
+      - name: Test backend
+        run: npm test
+
+      - name: Build project
         run: npm run build
 
       - name: Login to GitHub Container Registry
@@ -35,28 +59,50 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GH_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/H1ghBre4k3r/hurricane-ics
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha
-
-      - name: set lower case owner name
-        run: |
-          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
-        env:
-          OWNER: "${{ github.repository_owner }}"
-
-      - name: Build and Push image
+      - name: Build and push image
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64/v8
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+
+      - name: Pin Kubernetes manifest to image tag
+        env:
+          IMAGE_TAG: ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          manifest = Path("k8s/hurricane-ics.yml")
+          image_tag = os.environ["IMAGE_TAG"]
+          content = manifest.read_text()
+          content = content.replace(
+              "image: ghcr.io/h1ghbre4k3r/hurricane-ics",
+              f"image: {image_tag}",
+              1,
+          )
+          manifest.write_text(content)
+          PY
+
+      - name: Commit pinned manifest to deploy branch
+        env:
+          SHORT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          short_sha="${SHORT_SHA::7}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add k8s/hurricane-ics.yml
+          git commit -m "Update k3s manifest for ${short_sha}"
+
+          git branch -f "${MANIFEST_BRANCH}" HEAD
+          git push --force origin "${MANIFEST_BRANCH}"
