@@ -6,19 +6,21 @@ on:
       - main
   workflow_dispatch:
 
-permissions:
-  contents: write
-  packages: write
-
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   MANIFEST_BRANCH: deploy/k3s-manifests
+  REGISTRY: ghcr.io
+  IMAGE: hurricane-ics 
 
 jobs:
   publish-docker-image:
     name: Build, Publish, and Pin Image
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: write
+      packages: write
 
     steps:
       - name: Checkout
@@ -63,25 +65,13 @@ jobs:
           ls -lah build frontend/build
           echo "SHA=${{ github.sha }}"
 
-      - name: Normalize image name
-        run: |
-          set -euo pipefail
-          owner_lc="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          echo "IMAGE_NAME=ghcr.io/${owner_lc}/hurricane-ics" >> "${GITHUB_ENV}"
-          echo "IMAGE_NAME set to ghcr.io/${owner_lc}/hurricane-ics"
-        shell: bash
-
-      - name: Verify normalized image name
-        run: |
-          echo "IMAGE_NAME=${IMAGE_NAME}"
-          echo "SHA=${{ github.sha }}"
-
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
+        if: ${{ github.ref_name == 'main' }}
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -91,12 +81,12 @@ jobs:
           provenance: false
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}:latest
+            ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}:sha-${{ github.sha }}
 
       - name: Pin Kubernetes manifest to image tag
         env:
-          IMAGE_TAG: ${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          IMAGE_TAG: ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE }}:sha-${{ github.sha }}
         run: |
           python3 - <<'PY'
           import os
