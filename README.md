@@ -40,6 +40,19 @@ npm start
 The backend listens on port `3000` and serves the built React frontend from
 `frontend/build`.
 
+## Deployment and runtime assumptions
+
+- Node runtime: Node 24.
+- Registry workflow publishes to `ghcr.io/h1ghbre4k3r/hurricane-ics`:
+  - `latest`
+  - `sha-<full-commit>`
+- K3s manifests are maintained on `deploy/k3s-manifests` with pinned SHA image tags.
+- Optional scrape hardening config:
+  - `LINEUP_MARKER_ALLOWLIST` (comma-separated class markers that should remain present).
+
+On `main`, `.github/workflows/Docker.yml` updates the pinned manifest and force-updates
+the `deploy/k3s-manifests` branch on each run.
+
 ## k3s troubleshooting
 
 1. Check process health: `curl https://hurricane.lome.dev/healthz`
@@ -49,3 +62,5 @@ The backend listens on port `3000` and serves the built React frontend from
 
 If `/healthz` is healthy but `showCount` is `0` or `lastError` is set, the app is
 running but the upstream lineup fetch or parser likely needs attention.
+
+Use `runbook.md` for deployment/rollback steps and cache troubleshooting.

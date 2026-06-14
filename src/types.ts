@@ -46,13 +46,38 @@ export type FestivalDateRange = {
   end: string;
 };
 
+export type LineupParseWarning = {
+  code: "missing" | "invalid";
+  message: string;
+};
+
+export type UpstreamLineupHealth = {
+  url: string;
+  sourceMarker: string | null;
+  etag: string | null;
+  lastModified: string | null;
+  requiredMarkers: string[];
+  missingMarkers: string[];
+  parseWarnings: LineupParseWarning[];
+};
+
 export type FestivalFetchStatus = {
   cacheAvailable: boolean;
+  stale: boolean;
   lastSuccessfulFetch: string | null;
   lastAttemptedFetch: string | null;
   showCount: number;
   lineupDateRange: FestivalDateRange | null;
   lastError: string | null;
+  health: UpstreamLineupHealth | null;
+};
+
+export type ConcertsApiResponse = {
+  shows: Show[];
+  stale: boolean;
+  cacheAvailable: boolean;
+  lastUpdated: string | null;
+  health: UpstreamLineupHealth | null;
 };
 
 export type GetFestivalStatusFn = () => FestivalFetchStatus;

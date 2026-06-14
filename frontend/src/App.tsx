@@ -1,5 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { FestivalPlan } from "./../../src/types";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ConcertsApiResponse,
+  Show,
+  UpstreamLineupHealth,
+} from "./../../src/types";
 import "./App.css";
 import { Artist } from "./Artist";
 import { MySchedule } from "./MySchedule";
@@ -20,11 +24,39 @@ import {
 import { parseDate } from "./utils";
 
 type FetchState = "loading" | "ready" | "empty" | "error";
-type CopyState = "idle" | "calendar-copied" | "share-copied" | "failed";
+type CopyState =
+  | "idle"
+  | "calendar-copied"
+  | "share-copied"
+  | "failed";
 type CopySuccessState = Exclude<CopyState, "idle" | "failed">;
 type ScheduleView = "lineup" | "my-schedule";
 
 const SELECTIONS_STORAGE_KEY = "hurricane-ics:selected-artists";
+
+const parseViewFromSearch = (search: string): ScheduleView => {
+  const params = new URLSearchParams(search);
+  const view = params.get("view");
+
+  if (view === "lineup" || view === "my-schedule") {
+    return view;
+  }
+
+  return "lineup";
+};
+
+const updateViewInQuery = (view: ScheduleView) => {
+  const params = new URLSearchParams(window.location.search);
+  if (view === "lineup") {
+    params.delete("view");
+  } else {
+    params.set("view", view);
+  }
+
+  const query = params.toString();
+  const next = query ? `?${query}` : "";
+  window.history.replaceState(null, "", `${window.location.pathname}${next}`);
+};
 
 const formatDateRange = (days: FestivalDay[]): string => {
   if (!days.length) {
@@ -58,6 +90,38 @@ const formatFestivalTitle = (days: FestivalDay[]): string => {
   return `Hurricane ${years.join("/")}`;
 };
 
+const formatLastUpdated = (lastUpdated: string | null): string => {
+  if (!lastUpdated) {
+    return "never";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(lastUpdated));
+};
+
+const copyToClipboardFallback = (value: string): boolean => {
+  const textArea = document.createElement("textarea");
+  textArea.value = value;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.opacity = "0";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  try {
+    const copied = document.execCommand("copy");
+    return copied;
+  } finally {
+    document.body.removeChild(textArea);
+  }
+};
+
 const readStoredSelections = (): { [key: string]: boolean } => {
   try {
     const raw = window.localStorage.getItem(SELECTIONS_STORAGE_KEY);
@@ -82,19 +146,43 @@ const readStoredSelections = (): { [key: string]: boolean } => {
   }
 };
 
+const mapShowsToDays = (shows: Show[]): FestivalDay[] => {
+  return sortShowsByStart(shows).reduce<FestivalDay[]>((memo, show) => {
+    if (!memo.length || memo[memo.length - 1].day !== show.date_start) {
+      memo.push({ day: show.date_start, events: [] });
+    }
+
+    memo[memo.length - 1].events.push(show);
+    return memo;
+  }, []);
+};
+
+type HealthBannerInfo = {
+  stale: boolean;
+  cacheAvailable: boolean;
+  lastUpdated: string | null;
+  health: UpstreamLineupHealth | null;
+};
+
 const App = () => {
   const [festival, setFestival] = useState<FestivalDay[]>([]);
   const [fetchState, setFetchState] = useState<FetchState>("loading");
+  const [fetchError, setFetchError] = useState<string>("");
   const [activeDay, setActiveDay] = useState<string>("");
+  const [health, setHealth] = useState<HealthBannerInfo>({
+    stale: false,
+    cacheAvailable: false,
+    lastUpdated: null,
+    health: null,
+  });
+  const [selectedArtistsRequestId, setSelectedArtistsRequestId] = useState(0);
   const [sharedArtists] = useState<string[]>(() =>
-    typeof window === "undefined"
-      ? []
-      : getSharedArtistsFromSearch(window.location.search),
+    getSharedArtistsFromSearch(window.location.search),
   );
   const [sharedSelectionsApplied, setSharedSelectionsApplied] = useState(false);
   const [sharedPicksLoaded, setSharedPicksLoaded] = useState(false);
   const [selections, setSelections] = useState<{ [key: string]: boolean }>(() =>
-    typeof window === "undefined" ? {} : readStoredSelections(),
+    readStoredSelections(),
   );
   const [search, setSearch] = useState("");
   const [selectedStages, setSelectedStages] = useState<{ [key: string]: boolean }>(
@@ -105,50 +193,102 @@ const App = () => {
   }>({});
   const [selectedOnly, setSelectedOnly] = useState(false);
   const [copyState, setCopyState] = useState<CopyState>("idle");
-  const [scheduleView, setScheduleView] = useState<ScheduleView>("lineup");
+  const [scheduleView, setScheduleView] =
+    useState<ScheduleView>(parseViewFromSearch(window.location.search));
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+
+  const syncScheduleView = (nextView: ScheduleView) => {
+    setScheduleView(nextView);
+    updateViewInQuery(nextView);
+  };
+
+  const copyStateMessage = useMemo(() => {
+    switch (copyState) {
+      case "calendar-copied":
+        return "Calendar link copied";
+      case "share-copied":
+        return "Share link copied";
+      case "failed":
+        return "Copy failed";
+      default:
+        return "";
+    }
+  }, [copyState]);
+
+  const loadLineup = useCallback(async () => {
+    setFetchState((currentState) =>
+      currentState === "ready" ? "ready" : "loading",
+    );
+    setFetchError("");
+
+    try {
+      const response = await fetch("/api/concerts");
+      if (!response.ok) {
+        throw new Error(`Failed to load concerts: ${response.status}`);
+      }
+
+      const payload = (await response.json()) as ConcertsApiResponse;
+      const shows = payload.shows || [];
+      const days = mapShowsToDays(shows);
+      const sortedDays = days.map((day) => ({
+        ...day,
+        events: sortShowsByStart(day.events),
+      }));
+
+      setFestival(sortedDays);
+      if (days[0]?.day) {
+        setActiveDay((current) => current || days[0].day);
+      }
+      setFetchState(sortedDays.length ? "ready" : "empty");
+      setHealth({
+        stale: Boolean(payload.stale),
+        cacheAvailable: Boolean(payload.cacheAvailable),
+        lastUpdated: payload.lastUpdated || null,
+        health: payload.health || null,
+      });
+    } catch (error) {
+      console.error(error);
+      setFetchError(
+        "Concert data is currently unavailable. Showing previously loaded data when available.",
+      );
+
+      if (!festival.length) {
+        setFetchState("error");
+      } else {
+        setFetchState("ready");
+      }
+    }
+  }, [festival.length]);
 
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/api/concerts")
-      .then((val) => {
-        if (!val.ok) {
-          throw new Error(`Failed to load concerts: ${val.status}`);
-        }
-        return val.json();
-      })
-      .then((festival: FestivalPlan) => {
-        if (cancelled) {
-          return;
-        }
+    const run = async () => {
+      if (cancelled) {
+        return;
+      }
 
-        const days = [...festival.shows]
-          .sort((a, b) => (a.date_timestamp > b.date_timestamp ? 1 : -1))
-          .reduce<FestivalDay[]>((memo, cur) => {
-            if (!memo.length || memo[memo.length - 1].day !== cur.date_start) {
-              memo.push({ day: cur.date_start, events: [] });
-            }
-            memo[memo.length - 1].events.push(cur);
-            return memo;
-          }, [])
-          .map((day) => ({
-            ...day,
-            events: sortShowsByStart(day.events),
-          }));
+      await loadLineup();
+    };
 
-        setFestival(days);
-        setActiveDay(days[0]?.day || "");
-        setFetchState(days.length ? "ready" : "empty");
-      })
-      .catch((error) => {
-        console.error(error);
-        if (!cancelled) {
-          setFetchState("error");
-        }
-      });
+    run();
 
     return () => {
       cancelled = true;
+    };
+  }, [loadLineup, selectedArtistsRequestId]);
+
+  useEffect(() => {
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    setIsOnline(navigator.onLine);
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
     };
   }, []);
 
@@ -166,10 +306,10 @@ const App = () => {
 
     if (!sharedSelectionsApplied && sharedArtists.length) {
       setSharedSelectionsApplied(true);
+
       const currentSharedArtists = sharedArtists.filter((artist) =>
         artistNames.has(artist),
       );
-
       if (currentSharedArtists.length) {
         setSelections(makeSelectionMap(currentSharedArtists));
         setSharedPicksLoaded(true);
@@ -178,15 +318,44 @@ const App = () => {
     }
 
     setSelections((curSelections) => {
-      const cleanedSelections = Object.fromEntries(
-        Object.entries(curSelections).filter(
-          ([artist, selected]) => selected && artistNames.has(artist),
-        ),
-      );
-
-      return cleanedSelections;
+      const filteredSelections = Object.entries(curSelections).reduce<{
+        [key: string]: boolean;
+      }>((memo, [artist, selected]) => {
+        if (selected && artistNames.has(artist)) {
+          memo[artist] = true;
+        }
+        return memo;
+      }, {});
+      return filteredSelections;
     });
   }, [allShows, sharedArtists, sharedSelectionsApplied]);
+
+  useEffect(() => {
+    if (festival.length === 0) {
+      return;
+    }
+
+    const dayExists = festival.some((day) => day.day === activeDay);
+    if (!dayExists) {
+      setActiveDay(festival[0]?.day || "");
+    }
+  }, [activeDay, festival]);
+
+  useEffect(() => {
+    try {
+      const selectedList = Object.entries(selections)
+        .filter(([_, selected]) => selected)
+        .map(([name]) => name)
+        .sort((a, b) => a.localeCompare(b));
+
+      window.localStorage.setItem(
+        SELECTIONS_STORAGE_KEY,
+        JSON.stringify(selectedList),
+      );
+    } catch {
+      // Browsers can reject storage writes in private or locked-down modes.
+    }
+  }, [selections]);
 
   const selectedArtists = useMemo(
     () =>
@@ -196,18 +365,6 @@ const App = () => {
         .sort((a, b) => a.localeCompare(b)),
     [selections],
   );
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        SELECTIONS_STORAGE_KEY,
-        JSON.stringify(selectedArtists),
-      );
-    } catch {
-      // Browsers can reject storage writes in private or locked-down modes.
-    }
-  }, [selectedArtists]);
-
   const stageOptions = useMemo(
     () =>
       Array.from(new Set(allShows.map((show) => show.stage.name))).sort((a, b) =>
@@ -215,15 +372,13 @@ const App = () => {
       ),
     [allShows],
   );
-
   const categoryOptions = useMemo(
     () =>
-      Array.from(new Set(allShows.map((show) => show.category.name))).sort(
-        (a, b) => a.localeCompare(b),
-      ),
+      Array.from(
+        new Set(allShows.map((show) => show.category.name)),
+      ).sort((a, b) => a.localeCompare(b)),
     [allShows],
   );
-
   const activeStageFilters = useMemo(
     () =>
       Object.entries(selectedStages)
@@ -231,7 +386,6 @@ const App = () => {
         .map(([name]) => name),
     [selectedStages],
   );
-
   const activeCategoryFilters = useMemo(
     () =>
       Object.entries(selectedCategories)
@@ -239,35 +393,6 @@ const App = () => {
         .map(([name]) => name),
     [selectedCategories],
   );
-
-  const selectedShows = useMemo(
-    () => allShows.filter((show) => selections[show.artist.name]),
-    [allShows, selections],
-  );
-
-  const selectedDays = useMemo(
-    () => groupSelectedShowsByDay(festival, selections),
-    [festival, selections],
-  );
-
-  const conflictMap = useMemo(
-    () => buildConflictMap(selectedShows),
-    [selectedShows],
-  );
-
-  const conflictingArtists = useMemo(
-    () => new Set(Object.keys(conflictMap)),
-    [conflictMap],
-  );
-
-  const host = window.location.host;
-  const calendarHref = selectedArtists.length
-    ? makeCalendarUrl("webcal", host, selectedArtists)
-    : "";
-  const fullCalendarHref = makeCalendarUrl("webcal", host, []);
-  const copyCalendarUrl = makeCalendarUrl("https", host, selectedArtists);
-  const copyFullCalendarUrl = makeCalendarUrl("https", host, []);
-  const shareUrl = selectedArtists.length ? makeShareUrl(host, selectedArtists) : "";
 
   const activeFestivalDay = festival.find((day) => day.day === activeDay);
   const activeDayShows = useMemo(
@@ -302,33 +427,34 @@ const App = () => {
 
       return true;
     });
-  }, [
-    activeCategoryFilters,
-    activeDayShows,
-    activeStageFilters,
-    query,
-    selectedOnly,
-    selections,
-  ]);
+  }, [activeDayShows, query, activeStageFilters, activeCategoryFilters, selectedOnly, selections]);
 
-  const totalShows = allShows.length;
-  const dateRange = formatDateRange(festival);
-  const festivalTitle = formatFestivalTitle(festival);
-  const hasFilters =
-    !!search.trim() ||
-    activeStageFilters.length > 0 ||
-    activeCategoryFilters.length > 0 ||
-    selectedOnly;
+  const selectedShows = useMemo(
+    () => allShows.filter((show) => selections[show.artist.name]),
+    [allShows, selections],
+  );
+  const selectedDays = useMemo(
+    () => groupSelectedShowsByDay(festival, selections),
+    [festival, selections],
+  );
+  const conflictMap = useMemo(
+    () => buildConflictMap(selectedShows),
+    [selectedShows],
+  );
+  const conflictingArtists = useMemo(
+    () => new Set(Object.keys(conflictMap)),
+    [conflictMap],
+  );
+  const conflictCount = conflictingArtists.size;
 
-  const toggleFilter = (
-    value: string,
-    setter: React.Dispatch<React.SetStateAction<{ [key: string]: boolean }>>,
-  ) => {
-    setter((current) => ({
-      ...current,
-      [value]: !current[value],
-    }));
-  };
+  const host = window.location.host;
+  const fullCalendarHref = makeCalendarUrl("webcal", host, []);
+  const calendarHref = selectedArtists.length
+    ? makeCalendarUrl("webcal", host, selectedArtists)
+    : "";
+  const copyCalendarUrl = makeCalendarUrl("https", host, selectedArtists);
+  const copyFullCalendarUrl = makeCalendarUrl("https", host, []);
+  const shareUrl = selectedArtists.length ? makeShareUrl(host, selectedArtists) : "";
 
   const clearFilters = () => {
     setSearch("");
@@ -342,9 +468,31 @@ const App = () => {
     setSharedPicksLoaded(false);
   };
 
+  const toggleFilter = (
+    value: string,
+    setter: React.Dispatch<React.SetStateAction<{ [key: string]: boolean }>>,
+  ) => {
+    setter((current) => ({
+      ...current,
+      [value]: !current[value],
+    }));
+  };
+
   const copyLink = async (url: string, successState: CopySuccessState) => {
+    if (!url) {
+      return;
+    }
+
     try {
-      await navigator.clipboard.writeText(url);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const copied = copyToClipboardFallback(url);
+        if (!copied) {
+          throw new Error("Clipboard copy failed");
+        }
+      }
+
       setCopyState(successState);
     } catch (error) {
       console.error(error);
@@ -353,6 +501,48 @@ const App = () => {
 
     window.setTimeout(() => setCopyState("idle"), 1800);
   };
+
+  const retryFetch = () => {
+    setSelectedArtistsRequestId((current) => current + 1);
+  };
+
+  const staleDataBanner = useMemo(() => {
+    if (health.cacheAvailable && health.stale) {
+      return {
+        kind: "warning",
+        title: "Lineup data is stale",
+        message: `Using cached data from ${formatLastUpdated(health.lastUpdated)}. Tap retry once the source is reachable again.`,
+      };
+    }
+
+    if (!health.cacheAvailable && health.stale) {
+      return {
+        kind: "error",
+        title: "Lineup data unavailable",
+        message: "No cached lineup is available right now.",
+      };
+    }
+
+    if (!isOnline) {
+      return {
+        kind: "warning",
+        title: "Offline mode",
+        message: `Network unavailable. Last successful data: ${formatLastUpdated(health.lastUpdated)}.`,
+      };
+    }
+
+    return null;
+  }, [health, isOnline]);
+
+  const festivalTitle = formatFestivalTitle(festival);
+  const dateRange = formatDateRange(festival);
+
+  const totalShows = allShows.length;
+  const hasFilters =
+    !!search.trim() ||
+    activeStageFilters.length > 0 ||
+    activeCategoryFilters.length > 0 ||
+    selectedOnly;
 
   return (
     <main className="festival-app">
@@ -366,7 +556,6 @@ const App = () => {
             </div>
             <div className="hero__summary" aria-live="polite">
               <span>{selectedArtists.length}</span>
-              {" "}
               selected
             </div>
           </div>
@@ -379,9 +568,15 @@ const App = () => {
             <span>{totalShows || "--"} shows</span>
             <span>{selectedArtists.length} picks</span>
             <span>{conflictingArtists.size} conflicts</span>
+            {health.lastUpdated && (
+              <span>Updated {formatLastUpdated(health.lastUpdated)}</span>
+            )}
           </div>
           <div className="hero__actions">
-            <a className="calendar-button calendar-button--light" href={fullCalendarHref}>
+            <a
+              className="calendar-button calendar-button--light"
+              href={fullCalendarHref}
+            >
               Subscribe to full lineup
             </a>
             <button
@@ -394,6 +589,27 @@ const App = () => {
           </div>
         </div>
       </section>
+
+      {staleDataBanner && (
+        <section className={`status-banner status-banner--${staleDataBanner.kind}`}>
+          <div>
+            <p>{staleDataBanner.title}</p>
+            <span>{staleDataBanner.message}</span>
+          </div>
+          <button className="ghost-button" type="button" onClick={retryFetch}>
+            Retry
+          </button>
+        </section>
+      )}
+
+      {fetchError && (
+        <section className="status-banner status-banner--error">
+          <div>
+            <p>Load issue</p>
+            <span>{fetchError}</span>
+          </div>
+        </section>
+      )}
 
       <section className="schedule" aria-label="Festival schedule">
         {fetchState === "loading" && (
@@ -476,7 +692,7 @@ const App = () => {
                   scheduleView === "lineup" ? "view-switch__button--active" : ""
                 }`}
                 type="button"
-                onClick={() => setScheduleView("lineup")}
+                onClick={() => syncScheduleView("lineup")}
               >
                 Lineup
               </button>
@@ -487,7 +703,7 @@ const App = () => {
                     : ""
                 }`}
                 type="button"
-                onClick={() => setScheduleView("my-schedule")}
+                onClick={() => syncScheduleView("my-schedule")}
               >
                 My Schedule
               </button>
@@ -529,7 +745,9 @@ const App = () => {
                         }`}
                         key={category}
                         type="button"
-                        onClick={() => toggleFilter(category, setSelectedCategories)}
+                        onClick={() =>
+                          toggleFilter(category, setSelectedCategories)
+                        }
                       >
                         {category}
                       </button>
@@ -590,8 +808,8 @@ const App = () => {
                         selected={!!selections[show.artist.name]}
                         hasConflict={conflictingArtists.has(show.artist.name)}
                         setSelected={(selected) => {
-                          setSelections((curSelections) => ({
-                            ...curSelections,
+                          setSelections((current) => ({
+                            ...current,
                             [show.artist.name]: selected,
                           }));
                         }}
@@ -614,7 +832,7 @@ const App = () => {
                   copyLink(copyCalendarUrl, "calendar-copied")
                 }
                 copyShareLink={() => copyLink(shareUrl, "share-copied")}
-                showLineup={() => setScheduleView("lineup")}
+                showLineup={() => syncScheduleView("lineup")}
                 conflictMap={conflictMap}
               />
             )}
@@ -626,20 +844,18 @@ const App = () => {
         <div>
           <strong>{selectedArtists.length} selected</strong>
           <span>
-            {conflictingArtists.size
-              ? `${conflictingArtists.size} conflicting picks`
-              : selectedArtists.length
-                ? "Ready for your calendar"
-                : "Choose acts to create a feed"}
+            {conflictCount}
+            {" "}
+            conflicting act
+            {conflictCount === 1 ? "" : "s"}
+            {selectedArtists.length === 0
+              ? " . Choose acts to create a feed"
+              : ""}
           </span>
-          <span
-            className={`copy-state ${
-              copyState === "failed" ? "copy-state--error" : ""
-            }`}
-          >
-            {copyState === "calendar-copied" && "Calendar link copied"}
-            {copyState === "share-copied" && "Share link copied"}
-            {copyState === "failed" && "Copy failed"}
+          <span className={`copy-state ${
+            copyState === "failed" ? "copy-state--error" : ""
+          }`}>
+            {copyStateMessage}
           </span>
         </div>
         <div className="mobile-action__buttons">

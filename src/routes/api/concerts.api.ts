@@ -1,9 +1,25 @@
 import { Request, Response } from "express";
-import { FetchFestivalFn } from "../../types";
+import { ConcertsApiResponse, FestivalFetchStatus, FetchFestivalFn } from "../../types";
 
-export const handleGetConcertsApiFactory = (fetchFestival: FetchFestivalFn) => {
+type FetchFestivalWithMetadata = FetchFestivalFn & {
+  getStatus: () => FestivalFetchStatus;
+};
+
+export const handleGetConcertsApiFactory = (
+  fetchFestival: FetchFestivalWithMetadata,
+) => {
   return async (_: Request, res: Response) => {
     const festival = await fetchFestival();
-    res.json(festival);
+    const status = fetchFestival.getStatus();
+
+    const payload = {
+      ...festival,
+      stale: status.stale,
+      cacheAvailable: status.cacheAvailable,
+      lastUpdated: status.lastSuccessfulFetch,
+      health: status.health,
+    };
+
+    res.json(payload);
   };
 };

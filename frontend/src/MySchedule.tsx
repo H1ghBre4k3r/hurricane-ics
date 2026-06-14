@@ -110,6 +110,14 @@ export const MySchedule: FC<MyScheduleProps> = ({
                         )}
                       </div>
                       <div className="timeline-item__body">
+                        {conflicts.length > 0 && (
+                          <span className="timeline-item__conflict-count">
+                            {conflicts.length}
+                            {" "}
+                            overlap
+                            {conflicts.length === 1 ? "" : "s"}
+                          </span>
+                        )}
                         <div className="timeline-item__meta">
                           <span>{show.stage.name}</span>
                           <span>{show.category.name}</span>

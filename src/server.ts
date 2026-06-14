@@ -1,5 +1,5 @@
 import cors from "cors";
-import express, { Router } from "express";
+import express, { NextFunction, Request, Response, Router } from "express";
 import { handleGetConcertsApiFactory } from "./routes/api/concerts.api";
 import { handleGetStatusApiFactory } from "./routes/api/status.api";
 import { handleHealthCheck } from "./routes/health";
@@ -15,6 +15,39 @@ type FetchFestivalWithStatus = FetchFestivalFn & {
 export const createServer = (fetchFestival: FetchFestivalWithStatus) => {
   const server = express();
   server.use(cors());
+
+  const requestTimingMiddleware = (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    const start = Date.now();
+    const shouldTrack =
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/ics") ||
+      req.path === "/healthz";
+
+    if (!shouldTrack) {
+      next();
+      return;
+    }
+
+    res.on("finish", () => {
+      console.info(
+        JSON.stringify({
+          event: "http-request",
+          method: req.method,
+          path: req.path,
+          status: res.statusCode,
+          ms: Date.now() - start,
+        }),
+      );
+    });
+
+    next();
+  };
+
+  server.use(requestTimingMiddleware);
 
   server.get("/healthz", handleHealthCheck);
 

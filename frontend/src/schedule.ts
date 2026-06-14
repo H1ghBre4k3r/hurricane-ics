@@ -86,6 +86,19 @@ export const formatShowTime = (show: Show): string => {
   return `${weekday} ${timeRange}`;
 };
 
+export const formatConflictOverlap = (start: Date, end: Date): string => {
+  const minutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+  const hour = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+
+  const minutePart = `${remainder}m`;
+  if (!hour) {
+    return `${minutePart} overlap`;
+  }
+
+  return `${hour}h ${minutePart} overlap`;
+};
+
 export const showsOverlap = (a: Show, b: Show): boolean => {
   return getShowStart(a) < getShowEnd(b) && getShowStart(b) < getShowEnd(a);
 };
@@ -111,8 +124,8 @@ export const groupSelectedShowsByDay = (
   return festival
     .map((day) => ({
       day: day.day,
-      events: sortShowsByStart(
-        day.events.filter((show) => selections[show.artist.name]),
+      events: deduplicateShowsByArtist(
+        sortShowsByStart(day.events.filter((show) => selections[show.artist.name])),
       ),
     }))
     .filter((day) => day.events.length > 0);
@@ -120,9 +133,10 @@ export const groupSelectedShowsByDay = (
 
 export const buildConflictMap = (selectedShows: Show[]): ShowConflictMap => {
   const conflicts: ShowConflictMap = {};
+  const dedupedShows = deduplicateShowsByArtist(selectedShows);
 
-  selectedShows.forEach((show, index) => {
-    selectedShows.slice(index + 1).forEach((otherShow) => {
+  dedupedShows.forEach((show, index) => {
+    dedupedShows.slice(index + 1).forEach((otherShow) => {
       if (
         !showsOverlap(show, otherShow)
       ) {
@@ -139,17 +153,65 @@ export const buildConflictMap = (selectedShows: Show[]): ShowConflictMap => {
         Math.min(getShowEnd(show).getTime(), getShowEnd(otherShow).getTime()),
       );
       const overlap = formatTimeRange(overlapStart, overlapEnd);
+      const overlapDuration = formatConflictOverlap(overlapStart, overlapEnd);
+      const overlapText = `${overlap} (${overlapDuration})`;
 
       conflicts[show.artist.name] = [
         ...(conflicts[show.artist.name] || []),
-        { artist: otherShow.artist.name, overlap },
+        { artist: otherShow.artist.name, overlap: overlapText },
       ];
       conflicts[otherShow.artist.name] = [
         ...(conflicts[otherShow.artist.name] || []),
-        { artist: show.artist.name, overlap },
+        { artist: show.artist.name, overlap: overlapText },
       ];
     });
   });
 
   return conflicts;
+};
+
+export const deduplicateShowsByArtist = (shows: Show[]): Show[] => {
+  const grouped = new Map<string, Show[]>();
+
+  for (const show of shows) {
+    const key = show.artist.name;
+    const existing = grouped.get(key);
+    if (!existing) {
+      grouped.set(key, [show]);
+      continue;
+    }
+
+    existing.push(show);
+  }
+
+  const deduped: Show[] = [];
+
+  grouped.forEach((group) => {
+    if (group.length === 1) {
+      deduped.push(group[0]);
+      return;
+    }
+
+    const canonical = [...group].sort((a, b) => {
+      const diff = getShowEnd(b).getTime() - getShowEnd(a).getTime();
+      if (diff !== 0) {
+        return diff;
+      }
+
+      const startDiff = getShowStart(b).getTime() - getShowStart(a).getTime();
+      if (startDiff !== 0) {
+        return startDiff;
+      }
+
+      if (a.stage.name !== b.stage.name) {
+        return a.stage.name.localeCompare(b.stage.name);
+      }
+
+      return a.time_start.localeCompare(b.time_start);
+    })[0];
+
+    deduped.push(canonical);
+  });
+
+  return deduped;
 };

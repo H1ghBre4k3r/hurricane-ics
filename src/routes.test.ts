@@ -81,11 +81,29 @@ const festival: FestivalPlan = {
 
 const status: FestivalFetchStatus = {
   cacheAvailable: true,
+  stale: false,
   lastSuccessfulFetch: "2026-06-13T12:00:00.000Z",
   lastAttemptedFetch: "2026-06-13T12:00:00.000Z",
   showCount: 4,
   lineupDateRange: { start: "260618", end: "260619" },
   lastError: null,
+  health: {
+    url: "https://hurricane.de/line-up/",
+    sourceMarker: "abc123",
+    etag: null,
+    lastModified: null,
+    requiredMarkers: [
+      "m0132_lineupv2",
+      "m0132_lineupv2__day",
+      "m0132_lineupv2__show",
+      "m0132_lineupv2__artist",
+      "m0132_lineupv2__time",
+      "m0132_lineupv2__stage",
+      "m0132_lineupv2__category",
+    ],
+    missingMarkers: [],
+    parseWarnings: [],
+  },
 };
 
 class MockResponse {
@@ -124,6 +142,12 @@ const encodeArtists = (artists: string[]): string => {
 };
 
 const fetchFestival = async () => festival;
+const fetchFestivalWithStatus = Object.assign(fetchFestival, {
+  getStatus: () => status,
+}) as {
+  (): Promise<FestivalPlan>;
+  getStatus: () => FestivalFetchStatus;
+};
 
 test("health handler returns ok", () => {
   const res = makeResponse();
@@ -133,12 +157,36 @@ test("health handler returns ok", () => {
 
 test("api handlers expose concerts and scrape status", async () => {
   const concertsRes = makeResponse();
-  await handleGetConcertsApiFactory(fetchFestival)({} as Request, concertsRes);
-  assert.deepEqual(concertsRes.jsonBody, festival);
+  await handleGetConcertsApiFactory(fetchFestivalWithStatus)({} as Request, concertsRes);
+  assert.equal((concertsRes.jsonBody as { stale: boolean }).stale, false);
+  assert.equal(
+    (concertsRes.jsonBody as { lastUpdated: string | null }).lastUpdated,
+    status.lastSuccessfulFetch,
+  );
+  assert.equal((concertsRes.jsonBody as { shows: unknown[] }).shows.length, festival.shows.length);
+  assert.deepEqual((concertsRes.jsonBody as { health: unknown }).health, status.health);
 
   const statusRes = makeResponse();
   handleGetStatusApiFactory(() => status)({} as Request, statusRes);
   assert.deepEqual(statusRes.jsonBody, status);
+});
+
+test("api concerts reports stale-cache responses", async () => {
+  const staleStatus = { ...status, stale: true };
+  const fetchFestivalWithStale = Object.assign(fetchFestival, {
+    getStatus: () => staleStatus,
+  }) as {
+    (): Promise<FestivalPlan>;
+    getStatus: () => typeof staleStatus;
+  };
+
+  const concertsRes = makeResponse();
+  await handleGetConcertsApiFactory(fetchFestivalWithStale)({} as Request, concertsRes);
+  assert.equal((concertsRes.jsonBody as { stale: boolean }).stale, true);
+  assert.equal(
+    (concertsRes.jsonBody as { cacheAvailable: boolean }).cacheAvailable,
+    true,
+  );
 });
 
 test("ics handlers emit full, day, and selected artist calendars", async () => {

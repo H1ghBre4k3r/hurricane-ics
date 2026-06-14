@@ -26,6 +26,7 @@ export const Artist: FC<ArtistProps> = ({
       className={`artist-card ${selected ? "artist-card--selected" : ""} ${
         hasConflict ? "artist-card--conflict" : ""
       }`}
+      aria-label={`${selected ? "Unselect" : "Select"} ${name}`}
     >
       <span className="artist-card__media" aria-hidden="true">
         {imageUrl ? (

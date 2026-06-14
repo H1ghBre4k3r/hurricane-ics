@@ -1,0 +1,76 @@
+name: Release Candidate
+
+on:
+  push:
+    branches-ignore:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  verify:
+    name: Parse, Build, and Verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: ./frontend
+
+      - name: Run backend tests
+        run: npm test
+
+      - name: Build project
+        run: npm run build
+
+      - name: Validate configuration files
+        run: |
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          yaml_files = [
+              ".github/workflows/PR.yml",
+              ".github/workflows/Docker.yml",
+              "k8s/hurricane-ics.yml",
+          ]
+          for path in yaml_files:
+              content = pathlib.Path(path).read_text()
+              if not content.strip():
+                  print(f"{path} is empty", file=sys.stderr)
+                  sys.exit(1)
+
+          for path in ["package-lock.json", "frontend/package-lock.json"]:
+              data = json.loads(pathlib.Path(path).read_text())
+              if "lockfileVersion" not in data:
+                  print(f"{path} missing lockfileVersion", file=sys.stderr)
+                  sys.exit(1)
+          PY
+
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate-${{ github.sha }}
+          path: |
+            build
+            frontend/build

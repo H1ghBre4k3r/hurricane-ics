@@ -162,6 +162,48 @@ a {
   justify-content: flex-end;
 }
 
+.status-banner {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(32, 55, 51, 0.18);
+  border-left-width: 6px;
+  border-radius: 8px;
+  color: #17211f;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 0 auto;
+  margin-top: 18px;
+  max-width: 1120px;
+  min-height: 56px;
+  padding: 14px 16px;
+}
+
+.status-banner div {
+  display: grid;
+  gap: 4px;
+}
+
+.status-banner p {
+  font-size: 0.93rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.status-banner span {
+  color: #60746e;
+  display: inline;
+  font-size: 0.84rem;
+}
+
+.status-banner--warning {
+  border-left-color: #d85c49;
+}
+
+.status-banner--error {
+  border-left-color: #ad3a30;
+}
+
 .schedule__header h2,
 .state-panel h2 {
   color: #17211f;
@@ -786,6 +828,17 @@ a {
   gap: 4px;
   line-height: 1.4;
   padding: 10px;
+}
+
+.timeline-item__conflict-count {
+  border: 1px solid rgba(216, 92, 73, 0.28);
+  border-radius: 999px;
+  color: #a33f31;
+  font-size: 0.75rem;
+  font-weight: 900;
+  justify-self: start;
+  padding: 4px 8px;
+  text-transform: uppercase;
 }
 
 .timeline-item__conflicts strong {

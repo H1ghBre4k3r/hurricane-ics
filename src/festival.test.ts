@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseFestivalPlan } from "./festival";
+import { parseFestivalPlan, parseFestivalPlanWithDiagnostics } from "./festival";
 
 const lineupHtml = `
   <html>
@@ -65,4 +65,41 @@ test("parseFestivalPlan extracts current lineup cards", () => {
   assert.equal(festival.shows[2].artist.name, "MODESTEP (LIVE)");
   assert.equal(festival.shows[2].date_timestamp, "2606190045");
   assert.equal(festival.shows[3].date_timestamp, "2606192300");
+});
+
+test("parseFestivalPlanWithDiagnostics reports schema warnings without dropping partial data", () => {
+  const malformedRaw = `
+    <html>
+      <body>
+        <section class="m0132_lineupv2">
+          <div class="m0132_lineupv2__day" data-day="18-06">
+            <a class="m0132_lineupv2__show" data-category="33" data-stage="533" href="/line-up/act/bad/">
+              <span class="m0132_lineupv2__time">19:00 - 21:00</span>
+              <span class="m0132_lineupv2__artist">GOOD</span>
+              <span class="m0132_lineupv2__stage">Main Stage</span>
+              <span class="m0132_lineupv2__category">Konzert</span>
+            </a>
+            <a class="m0132_lineupv2__show" data-category="33" data-stage="533">
+              <img data-image-imageSrc="/fileadmin/missing.jpg" />
+              <span class="m0132_lineupv2__time">22:00 - 23:00</span>
+              <span class="m0132_lineupv2__artist"></span>
+              <span class="m0132_lineupv2__stage">Main Stage</span>
+              <span class="m0132_lineupv2__category">Konzert</span>
+            </a>
+          </div>
+        </section>
+      </body>
+    </html>
+  `;
+
+  const result = parseFestivalPlanWithDiagnostics(malformedRaw);
+  assert.equal(result.festival.shows.length, 1);
+  assert.equal(result.festival.shows[0].artist.name, "GOOD");
+  assert.equal(result.warnings.length >= 1, true);
+});
+
+test("parseFestivalPlanWithDiagnostics includes marker drift warnings", () => {
+  const result = parseFestivalPlanWithDiagnostics("<div>no lineup content</div>", ["missing-marker"]);
+  assert.equal(result.warnings.length > 0, true);
+  assert.equal(result.festival.shows.length, 0);
 });

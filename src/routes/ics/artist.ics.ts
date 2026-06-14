@@ -22,7 +22,13 @@ export const handleGetArtistIcsFactory = (fetchFestival: FetchFestivalFn) => {
       calendar.events(concerts);
       sendCalendar(res, calendar, "hurricane-artists.ics");
     } catch (e) {
-      console.error(e);
+      console.error(
+        JSON.stringify({
+          event: "ics-route-error",
+          route: "artist",
+          message: e instanceof Error ? e.message : String(e),
+        }),
+      );
       res.sendStatus(400);
     }
   };

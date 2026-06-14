@@ -28,7 +28,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -60,7 +60,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GH_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -90,20 +90,23 @@ jobs:
           )
           manifest.write_text(content)
           PY
+          cat k8s/hurricane-ics.yml
 
       - name: Commit pinned manifest to deploy branch
         env:
           SHORT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-
           short_sha="${SHORT_SHA::7}"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add k8s/hurricane-ics.yml
-          git commit -m "Update k3s manifest for ${short_sha}"
-
-          git branch -f "${MANIFEST_BRANCH}" HEAD
+          git checkout -B "${MANIFEST_BRANCH}"
+          git add .
+          if git diff --cached --quiet; then
+            git commit --allow-empty -m "Update k3s manifest for ${short_sha}"
+          else
+            git commit -m "Update k3s manifest for ${short_sha}"
+          fi
           git push --force origin "${MANIFEST_BRANCH}"
