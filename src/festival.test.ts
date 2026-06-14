@@ -108,3 +108,15 @@ test("parseFestivalPlanWithDiagnostics includes marker drift warnings", () => {
   assert.equal(result.warnings.length > 0, true);
   assert.equal(result.festival.shows.length, 0);
 });
+
+test("parseFestivalPlanWithDiagnostics keeps parsing while reporting allowlist drift", () => {
+  const result = parseFestivalPlanWithDiagnostics(lineupHtml, [
+    "m0132_lineupv2__show",
+    "missing-marker",
+  ]);
+
+  assert.equal(result.festival.shows.length, 4);
+  assert.equal(result.warnings.length >= 1, true);
+  assert.equal(result.missingMarkers.includes("missing-marker"), true);
+  assert.equal(result.markerAllowlist.includes("m0132_lineupv2__show"), true);
+});
