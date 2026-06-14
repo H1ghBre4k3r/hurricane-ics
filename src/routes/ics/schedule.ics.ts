@@ -11,17 +11,31 @@ export const handleGetScheduleIcsFactory = (
   return async (req: Request, res: Response) => {
     const scheduleId = req.params["scheduleId"];
     if (!scheduleId) {
-      res.sendStatus(400);
+      res.status(400).json({ error: "Missing schedule id." });
       return;
     }
 
-    const schedule = scheduleStore.get(scheduleId);
-    if (!schedule) {
-      res.sendStatus(404);
+    const lookup = scheduleStore.get(scheduleId);
+    if (lookup.status !== "ok" || !lookup.schedule) {
+      console.warn(
+        JSON.stringify({
+          event: "schedule-ics-miss",
+          route: "schedule",
+          scheduleId,
+          status: lookup.status,
+          reason: lookup.reason,
+        }),
+      );
+
+      if (lookup.status === "malformed") {
+        res.status(400).json({ error: lookup.reason || "Invalid schedule id." });
+      } else {
+        res.status(404).json({ error: lookup.reason || "Schedule not found." });
+      }
       return;
     }
 
-    const artistSet = new Set(schedule.artists);
+    const artistSet = new Set(lookup.schedule.artists);
     if (!artistSet.size) {
       res.sendStatus(400);
       return;
@@ -51,6 +65,17 @@ export const handleGetScheduleIcsFactory = (
       }
 
       calendar.events(concerts);
+
+      console.info(
+        JSON.stringify({
+          event: "schedule-ics-hit",
+          route: "schedule",
+          scheduleId,
+          artists: artistSet.size,
+          events: concerts.length,
+        }),
+      );
+
       sendCalendar(
         res,
         calendar,

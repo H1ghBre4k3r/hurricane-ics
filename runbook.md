@@ -57,5 +57,9 @@ Before promoting from release candidate to `main`, confirm:
 3. Release-candidate static checks passed:
    - workflow/manifests YAML lint checks
    - lockfile consistency checks
-4. `k8s/hurricane-ics.yml` is pinned to the intended SHA image tag in `deploy/k3s-manifests`.
-5. Manifest branch updates come only from the main publish workflow.
+4. Branch protection intent for merge is enforced:
+   - `PR.yml` required for merge.
+   - `Docker.yml` required for `main` merges that publish images.
+5. `k8s/hurricane-ics.yml` is pinned to the intended SHA image tag in `deploy/k3s-manifests`.
+6. Confirm `Docker.yml` is the only workflow that mutates `deploy/k3s-manifests` and writes image pins.
+7. Confirm release candidate artifacts were only used for inspection (no manifest/image side effects) on non-main verification.

@@ -22,7 +22,12 @@ for selected artists.
 - `GET /api/concerts` returns the parsed `FestivalPlan`.
 - `POST /api/schedule` creates or resolves a shared schedule id for a normalized
   artist list payload (`{ artists: string[] }`).
+  - responses are deterministic for equivalent normalized artist sets.
+  - legacy `?artists=` links are migrated to the scheduled token flow by the
+    frontend when possible.
 - `GET /api/schedule/:scheduleId` returns the stored artist payload for a shared schedule id.
+  - malformed ids return `400`.
+  - unknown/expired ids return `404`.
 - `GET /ics/schedule/:scheduleId` returns the artist filtered ICS feed for a shared schedule id.
 - `GET /api/status` returns scrape/cache metadata:
   - `staleReason` (null unless upstream refresh is being retried from cache)
@@ -70,12 +75,17 @@ the `deploy/k3s-manifests` branch on each run.
 
 - Pull Request flow:
   - All PRs must pass `.github/workflows/PR.yml` (`build-and-test`).
-  - This is the required gate for merges.
+  - This is the required merge gate for all PRs.
+  - `pull_request` gate is the required approver of merge readiness.
 - Mainline publishing:
   - `.github/workflows/Docker.yml` remains the only workflow updating
     `deploy/k3s-manifests`.
   - `.github/workflows/release-candidate.yml` does **not** push manifests or images.
   - It only runs parse/build/test + static checks and uploads review artifacts.
+- One-line action ownership:
+  - Required checks: PR.yml, Docker.yml (when applicable on main), release-candidate.
+  - `Docker.yml` owns all manifest updates and image publishes.
+  - `release-candidate` outputs are for inspection only and are not merge prerequisites for non-PR side effects.
 - Release candidate verification:
   - Artifacts are published from PRs targeting `main` and from non-`main` pushes as
     `release-candidate-<commit_sha>`.

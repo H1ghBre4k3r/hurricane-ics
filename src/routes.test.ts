@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHmac } from "crypto";
 import { Request, Response } from "express";
 import { handleGetConcertsApiFactory } from "./routes/api/concerts.api";
 import { handleGetStatusApiFactory } from "./routes/api/status.api";
@@ -11,8 +12,8 @@ import {
   FestivalFetchStatus,
   FestivalPlan,
   SharedSchedule,
-  ScheduleStore,
 } from "./types";
+import { createScheduleStore } from "./scheduleStore";
 import {
   handleCreateScheduleFactory,
   handleGetScheduleFactory,
@@ -154,44 +155,33 @@ const encodeArtists = (artists: string[]): string => {
   return Buffer.from(JSON.stringify(artists)).toString("base64");
 };
 
-const createTestSchedule = (id: string, artists: string[]): SharedSchedule => ({
-  id,
-  artists,
-  createdAt: "2026-06-14T10:00:00.000Z",
-  updatedAt: "2026-06-14T10:00:00.000Z",
-});
-
-const makeScheduleStore = (): ScheduleStore => {
-  const schedules = new Map<string, SharedSchedule>();
-  const artistBuckets = new Map<string, string>();
-
-  return {
-    createOrGet: (artists: string[]) => {
-      const key = artists
-        .map((artist) => artist.trim())
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b))
-        .join("|");
-      const existingId = artistBuckets.get(key);
-      if (existingId) {
-        return schedules.get(existingId) as SharedSchedule;
-      }
-
-      const id = `sched-${Math.random().toString(16).slice(2, 10)}`;
-      const schedule = createTestSchedule(id, artists);
-      schedules.set(id, schedule);
-      artistBuckets.set(key, id);
-      return schedule;
-    },
-    get: (id: string) => {
-      return schedules.get(id);
-    },
-  };
+const normalizeArtists = (artists: string[]): string[] => {
+  return Array.from(new Set(artists.map((artist) => artist.trim()).filter(Boolean))).sort(
+    (a, b) => a.localeCompare(b),
+  );
 };
 
-const scheduleStore = makeScheduleStore();
+const buildExpiredScheduleToken = (artists: string[], secret: string): string => {
+  const now = Date.now();
+  const issuedAt = Math.floor((now - 2 * 24 * 60 * 60 * 1000) / (24 * 60 * 60 * 1000)) *
+    24 * 60 * 60 * 1000;
+  const exp = now - 1000;
+  const payload = {
+    v: 1,
+    artists: normalizeArtists(artists),
+    issuedAt,
+    exp,
+  };
+  const payloadJson = JSON.stringify(payload);
+  const payloadEncoded = Buffer.from(payloadJson).toString("base64url");
+  const signature = createHmac("sha256", secret).update(payloadJson).digest("base64url");
+  return `${payloadEncoded}.${signature}`;
+};
 
 const fetchFestival = async () => festival;
+process.env.SCHEDULE_SIGNING_SECRET ||= "hurricane-ics-development-secret";
+const scheduleStore = createScheduleStore(1);
+
 const fetchFestivalWithStatus = Object.assign(fetchFestival, {
   getStatus: () => status,
 }) as {
@@ -322,7 +312,7 @@ test("schedule api creates and retrieves shared selections", async () => {
   await handleCreateScheduleFactory(scheduleStore)(
     {
       body: {
-        artists: ["HANSEMÄDCHEN", "JULI"],
+        artists: ["JULI", "HANSEMÄDCHEN", "JULI", ""],
       },
     } as Request,
     createResponse,
@@ -331,6 +321,22 @@ test("schedule api creates and retrieves shared selections", async () => {
   assert.ok((createResponse.jsonBody as SharedSchedule).id);
 
   const scheduleId = (createResponse.jsonBody as SharedSchedule).id;
+
+  const stableResponse = makeResponse();
+  await handleCreateScheduleFactory(scheduleStore)(
+    {
+      body: {
+        artists: ["HANSEMÄDCHEN", "JULI"],
+      },
+    } as Request,
+    stableResponse,
+  );
+  assert.equal(stableResponse.statusCode, 201);
+  assert.equal(
+    (stableResponse.jsonBody as SharedSchedule).id,
+    scheduleId,
+  );
+
   const getResponse = makeResponse();
   await handleGetScheduleFactory(scheduleStore)(
     { params: { scheduleId } } as unknown as Request,
@@ -352,6 +358,38 @@ test("schedule api returns 404 for missing shared schedule", () => {
   assert.equal(getResponse.statusCode, 404);
 });
 
+test("schedule api returns 400 for malformed ids", () => {
+  const getResponse = makeResponse();
+  handleGetScheduleFactory(scheduleStore)(
+    { params: { scheduleId: "bad-token" } } as unknown as Request,
+    getResponse,
+  );
+  assert.equal(getResponse.statusCode, 400);
+});
+
+test("schedule api returns 404 for expired and unsigned ids", () => {
+  const getResponse = makeResponse();
+  const expiredSecret =
+    process.env.SCHEDULE_SIGNING_SECRET || "hurricane-ics-development-secret";
+  const expiredToken = buildExpiredScheduleToken(["HANSEMÄDCHEN"], expiredSecret);
+  handleGetScheduleFactory(scheduleStore)(
+    { params: { scheduleId: expiredToken } } as unknown as Request,
+    getResponse,
+  );
+  assert.equal(getResponse.statusCode, 404);
+
+  const invalidSigResponse = makeResponse();
+  handleGetScheduleFactory(scheduleStore)(
+    {
+      params: {
+        scheduleId: `${expiredToken.split(".").slice(0, 1).join(".")}.invalid`,
+      },
+    } as unknown as Request,
+    invalidSigResponse,
+  );
+  assert.equal(invalidSigResponse.statusCode, 404);
+});
+
 test("schedule api rejects missing artist payload", async () => {
   const badResponse = makeResponse();
   await handleCreateScheduleFactory(scheduleStore)(
@@ -362,10 +400,9 @@ test("schedule api rejects missing artist payload", async () => {
 });
 
 test("schedule calendar endpoint emits events for shared IDs", async () => {
-  const storedStore = makeScheduleStore();
-  const schedule = storedStore.createOrGet(["HANSEMÄDCHEN"]);
+  const schedule = scheduleStore.createOrGet(["HANSEMÄDCHEN"]);
   const res = makeResponse();
-  const handleScheduleIcs = handleGetScheduleIcsFactory(fetchFestival, storedStore);
+  const handleScheduleIcs = handleGetScheduleIcsFactory(fetchFestival, scheduleStore);
 
   await handleScheduleIcs(
     { params: { scheduleId: schedule.id } } as unknown as Request,
@@ -374,4 +411,26 @@ test("schedule calendar endpoint emits events for shared IDs", async () => {
 
   assert.equal(countEvents(res.body), 1);
   assert.match(res.body, /HANSEMÄDCHEN/);
+});
+
+test("schedule calendar rejects malformed ids", async () => {
+  const handleScheduleIcs = handleGetScheduleIcsFactory(fetchFestival, scheduleStore);
+
+  const malformedRes = makeResponse();
+  await handleScheduleIcs(
+    { params: { scheduleId: "bad-token" } } as unknown as Request,
+    malformedRes,
+  );
+  assert.equal(malformedRes.statusCode, 400);
+
+  const unknownRes = makeResponse();
+  await handleScheduleIcs(
+    {
+      params: {
+        scheduleId: "eyJhIjoiYiJ9.invalid",
+      },
+    } as unknown as Request,
+    unknownRes,
+  );
+  assert.equal(unknownRes.statusCode, 404);
 });

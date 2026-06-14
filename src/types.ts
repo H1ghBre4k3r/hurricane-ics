@@ -58,9 +58,23 @@ export type SharedSchedule = {
   updatedAt: string;
 };
 
+export type ScheduleLookupStatus =
+  | "ok"
+  | "malformed"
+  | "invalid_signature"
+  | "invalid_payload"
+  | "expired"
+  | "unsupported_version";
+
+export type ScheduleLookupResult = {
+  status: ScheduleLookupStatus;
+  schedule?: SharedSchedule;
+  reason?: string;
+};
+
 export type ScheduleStore = {
   createOrGet: (artists: string[]) => SharedSchedule;
-  get: (id: string) => SharedSchedule | undefined;
+  get: (id: string) => ScheduleLookupResult;
 };
 
 export type UpstreamLineupHealth = {

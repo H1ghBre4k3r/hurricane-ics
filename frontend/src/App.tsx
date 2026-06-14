@@ -35,10 +35,6 @@ type CopySuccessState = Exclude<CopyState, "idle" | "failed">;
 type ScheduleView = "lineup" | "my-schedule";
 
 const SELECTIONS_STORAGE_KEY = "hurricane-ics:selected-artists";
-const SCHEDULE_CACHE_STORAGE_KEY = "hurricane-ics:schedule-cache";
-const SCHEDULE_SEPARATOR = "\u0000";
-
-type CachedScheduleMap = { [artistKey: string]: string };
 
 const parseViewFromSearch = (search: string): ScheduleView => {
   const params = new URLSearchParams(search);
@@ -162,60 +158,6 @@ const normalizeArtistList = (artists: string[]): string[] => {
   ).sort((a, b) => a.localeCompare(b));
 };
 
-const makeArtistListKey = (artists: string[]): string => {
-  return normalizeArtistList(artists).join(SCHEDULE_SEPARATOR);
-};
-
-const readScheduleCache = (): CachedScheduleMap => {
-  try {
-    const raw = window.localStorage.getItem(SCHEDULE_CACHE_STORAGE_KEY);
-    if (!raw) {
-      return {};
-    }
-
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") {
-      return {};
-    }
-
-    return Object.entries(parsed).reduce<CachedScheduleMap>((memo, [key, value]) => {
-      if (typeof key === "string" && typeof value === "string") {
-        memo[key] = value;
-      }
-      return memo;
-    }, {});
-  } catch (error) {
-    console.error(error);
-    return {};
-  }
-};
-
-const writeScheduleCache = (cache: CachedScheduleMap): void => {
-  try {
-    window.localStorage.setItem(
-      SCHEDULE_CACHE_STORAGE_KEY,
-      JSON.stringify(cache),
-    );
-  } catch {
-    // Keep silent if browser restrictions prevent local storage writes.
-  }
-};
-
-const readScheduleFromCache = (
-  cache: CachedScheduleMap,
-  artists: string[],
-): string | null => {
-  const key = makeArtistListKey(artists);
-  return cache[key] || null;
-};
-
-const writeScheduleToCache = (cache: CachedScheduleMap, artists: string[], id: string): CachedScheduleMap => {
-  const key = makeArtistListKey(artists);
-  const nextCache = { ...cache, [key]: id };
-  writeScheduleCache(nextCache);
-  return nextCache;
-};
-
 const mapShowsToDays = (shows: Show[]): FestivalDay[] => {
   return sortShowsByStart(shows).reduce<FestivalDay[]>((memo, show) => {
     if (!memo.length || memo[memo.length - 1].day !== show.date_start) {
@@ -248,18 +190,13 @@ const App = () => {
     health: null,
   });
   const [selectedArtistsRequestId, setSelectedArtistsRequestId] = useState(0);
-  const [sharedScheduleId] = useState<string | null>(() =>
+  const [seedScheduleId] = useState<string | null>(() =>
     getSharedScheduleFromSearch(window.location.search),
   );
-  const [sharedArtists] = useState<string[]>(() =>
+  const [sharedArtists, setSharedArtists] = useState<string[]>(() =>
     getSharedArtistsFromSearch(window.location.search),
   );
-  const [scheduleId, setScheduleId] = useState<string | null>(() =>
-    getSharedScheduleFromSearch(window.location.search),
-  );
-  const [scheduleCache, setScheduleCache] = useState<CachedScheduleMap>(() =>
-    readScheduleCache(),
-  );
+  const [scheduleId, setScheduleId] = useState<string | null>(seedScheduleId);
   const [sharedSelectionsApplied, setSharedSelectionsApplied] = useState(false);
   const [sharedPicksLoaded, setSharedPicksLoaded] = useState(false);
   const [selections, setSelections] = useState<{ [key: string]: boolean }>(() =>
@@ -349,11 +286,6 @@ const App = () => {
         return null;
       }
 
-      const cached = readScheduleFromCache(scheduleCache, artists);
-      if (cached) {
-        return cached;
-      }
-
       try {
         const response = await fetch("/api/schedule", {
           method: "POST",
@@ -369,7 +301,6 @@ const App = () => {
 
         const payload = (await response.json()) as { id: string };
         if (typeof payload?.id === "string" && payload.id.length > 0) {
-          setScheduleCache((cache) => writeScheduleToCache(cache, artists, payload.id));
           return payload.id;
         }
       } catch (error) {
@@ -378,7 +309,32 @@ const App = () => {
 
       return null;
     },
-    [scheduleCache],
+    [],
+  );
+
+  const persistLegacySchedule = useCallback(
+    (artists: string[], id: string) => {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("artists");
+      params.set("schedule", id);
+      const query = params.toString();
+      const next = query ? `?${query}` : "";
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${next}`,
+      );
+      setScheduleId(id);
+
+      console.info(
+        JSON.stringify({
+          event: "legacy-share-migrated",
+          artists: artists.length,
+          scheduleId: id,
+        }),
+      );
+    },
+    [],
   );
 
   useEffect(() => {
@@ -413,6 +369,11 @@ const App = () => {
     };
   }, []);
 
+  const allShows = useMemo(
+    () => festival.flatMap((day) => day.events),
+    [festival],
+  );
+
   useEffect(() => {
     if (!allShows.length) {
       return;
@@ -436,8 +397,48 @@ const App = () => {
       return;
     }
 
-    if (!sharedScheduleId) {
-      applySharedArtists(sharedArtists);
+    const resolveFromLegacyArtists = async () => {
+      if (!sharedArtists.length) {
+        applySharedArtists([]);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/schedule", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ artists: sharedArtists }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to migrate legacy schedule: ${response.status}`);
+        }
+
+        const payload = (await response.json()) as { id?: unknown };
+        if (typeof payload.id === "string" && payload.id.length > 0) {
+          persistLegacySchedule(sharedArtists, payload.id);
+          setSharedPicksLoaded(true);
+          applySharedArtists(sharedArtists);
+          return;
+        }
+
+        throw new Error("Invalid schedule response payload");
+      } catch (error) {
+        console.warn(
+          JSON.stringify({
+            event: "legacy-share-migration-failed",
+            artists: sharedArtists.length,
+            message: error instanceof Error ? error.message : String(error),
+          }),
+        );
+        applySharedArtists(sharedArtists);
+      }
+    };
+
+    if (!seedScheduleId) {
+      void resolveFromLegacyArtists();
       return;
     }
 
@@ -445,7 +446,7 @@ const App = () => {
 
     const applySharedSchedule = async () => {
       try {
-        const response = await fetch(`/api/schedule/${encodeURIComponent(sharedScheduleId)}`);
+        const response = await fetch(`/api/schedule/${encodeURIComponent(seedScheduleId)}`);
         if (cancelled) {
           return;
         }
@@ -454,7 +455,7 @@ const App = () => {
           console.warn(
             JSON.stringify({
               event: "shared-schedule-load-failed",
-              scheduleId: sharedScheduleId,
+              scheduleId: seedScheduleId,
               status: response.status,
             }),
           );
@@ -476,8 +477,9 @@ const App = () => {
           return;
         }
 
-        setScheduleCache((cache) => writeScheduleToCache(cache, artists, sharedScheduleId));
-        setScheduleId(sharedScheduleId);
+        setScheduleId(seedScheduleId);
+        setSharedArtists(artists);
+        setSharedPicksLoaded(true);
         applySharedArtists(artists);
       } catch {
         if (!cancelled) {
@@ -491,12 +493,7 @@ const App = () => {
     return () => {
       cancelled = true;
     };
-  }, [allShows, sharedArtists, sharedScheduleId, sharedSelectionsApplied]);
-
-  const allShows = useMemo(
-    () => festival.flatMap((day) => day.events),
-    [festival],
-  );
+  }, [allShows, sharedArtists, seedScheduleId, sharedSelectionsApplied, persistLegacySchedule]);
 
   useEffect(() => {
     if (!allShows.length) {
@@ -536,7 +533,7 @@ const App = () => {
     );
 
     if (!artists.length) {
-      setScheduleId(sharedScheduleId);
+      setScheduleId(seedScheduleId);
       return;
     }
 
@@ -558,7 +555,7 @@ const App = () => {
     return () => {
       cancelled = true;
     };
-  }, [ensureScheduleId, selections, sharedScheduleId]);
+  }, [ensureScheduleId, selections, seedScheduleId]);
 
   useEffect(() => {
     try {
@@ -575,10 +572,6 @@ const App = () => {
       // Browsers can reject storage writes in private or locked-down modes.
     }
   }, [selections]);
-
-  useEffect(() => {
-    writeScheduleCache(scheduleCache);
-  }, [scheduleCache]);
 
   const selectedArtists = useMemo(
     () =>
