@@ -58,6 +58,33 @@ export type SharedSchedule = {
   updatedAt: string;
 };
 
+export type PersistedUser = {
+  id: string;
+  email: string;
+  passwordHash: string;
+  passwordSalt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UserSchedule = {
+  id: string;
+  userId: string;
+  name: string | null;
+  artists: string[];
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type UserScheduleLookupStatus = "ok" | "missing" | "deleted";
+
+export type UserScheduleLookupResult = {
+  status: UserScheduleLookupStatus;
+  schedule?: UserSchedule;
+  reason?: string;
+};
+
 export type ScheduleLookupStatus =
   | "ok"
   | "malformed"
@@ -75,6 +102,35 @@ export type ScheduleLookupResult = {
 export type ScheduleStore = {
   createOrGet: (artists: string[]) => SharedSchedule;
   get: (id: string) => ScheduleLookupResult;
+};
+
+export type AuthStore = {
+  createUser: (email: string, passwordHash: string, passwordSalt: string) => Promise<PersistedUser>;
+  getUserByEmail: (email: string) => Promise<PersistedUser | null>;
+  getUserById: (id: string) => Promise<PersistedUser | null>;
+};
+
+export type UserScheduleStore = {
+  create: (
+    userId: string,
+    artists: string[],
+    name?: string | null,
+  ) => Promise<UserSchedule>;
+  list: (userId: string) => Promise<UserSchedule[]>;
+  get: (userId: string, scheduleId: string) => Promise<UserScheduleLookupResult>;
+  getPublic: (scheduleId: string) => Promise<UserScheduleLookupResult>;
+  delete: (userId: string, scheduleId: string) => Promise<boolean>;
+  update: (
+    userId: string,
+    scheduleId: string,
+    patch: { name?: string | null; artists?: string[] },
+  ) => Promise<UserScheduleLookupResult>;
+};
+
+export type AppUser = {
+  id: string;
+  email: string;
+  createdAt: string;
 };
 
 export type UpstreamLineupHealth = {

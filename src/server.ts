@@ -2,6 +2,19 @@ import cors from "cors";
 import express, { NextFunction, Request, Response, Router } from "express";
 import { handleGetConcertsApiFactory } from "./routes/api/concerts.api";
 import { handleGetStatusApiFactory } from "./routes/api/status.api";
+import {
+  handleCreateMyScheduleFactory,
+  handleDeleteMyScheduleFactory,
+  handleGetMyScheduleFactory,
+  handleListMySchedulesFactory,
+  handleUpdateMyScheduleFactory,
+} from "./routes/api/me-schedules.api";
+import {
+  handleRegisterFactory,
+  handleLoginFactory,
+  handleLogoutFactory,
+  handleMeFactory,
+} from "./routes/api/auth.api";
 import { handleHealthCheck } from "./routes/health";
 import {
   handleCreateScheduleFactory,
@@ -12,8 +25,10 @@ import { handleGetDayIcsFactory } from "./routes/ics/day.ics";
 import { handleGetIndexIcsFactory } from "./routes/ics/index.ics";
 import { handleGetScheduleIcsFactory } from "./routes/ics/schedule.ics";
 import { FetchFestivalFn, GetFestivalStatusFn } from "./types";
+import { createAppStore } from "./appStore";
 import { ScheduleStore } from "./types";
 import { createScheduleStore } from "./scheduleStore";
+import { createAuthMiddleware, requireAuth } from "./auth";
 
 type FetchFestivalWithStatus = FetchFestivalFn & {
   getStatus: GetFestivalStatusFn;
@@ -21,9 +36,11 @@ type FetchFestivalWithStatus = FetchFestivalFn & {
 
 export const createServer = (fetchFestival: FetchFestivalWithStatus) => {
   const scheduleStore: ScheduleStore = createScheduleStore();
+  const { authStore, userScheduleStore } = createAppStore();
   const server = express();
   server.use(cors());
   server.use(express.json());
+  server.use(createAuthMiddleware(authStore));
 
   const requestTimingMiddleware = (
     req: Request,
@@ -69,7 +86,7 @@ export const createServer = (fetchFestival: FetchFestivalWithStatus) => {
   icsRouter.get("/artist", handleGetArtistIcsFactory(fetchFestival));
   icsRouter.get(
     "/schedule/:scheduleId",
-    handleGetScheduleIcsFactory(fetchFestival, scheduleStore),
+    handleGetScheduleIcsFactory(fetchFestival, scheduleStore, userScheduleStore),
   );
 
   server.use(/^\/ics\/\d{4}/, icsRouter);
@@ -77,9 +94,41 @@ export const createServer = (fetchFestival: FetchFestivalWithStatus) => {
 
   const apiRouter = Router();
   apiRouter.post("/schedule", handleCreateScheduleFactory(scheduleStore));
-  apiRouter.get("/schedule/:scheduleId", handleGetScheduleFactory(scheduleStore));
+  apiRouter.get("/schedule/:scheduleId", handleGetScheduleFactory(
+    scheduleStore,
+    userScheduleStore,
+  ));
   apiRouter.get("/concerts", handleGetConcertsApiFactory(fetchFestival));
   apiRouter.get("/status", handleGetStatusApiFactory(fetchFestival.getStatus));
+
+  apiRouter.post("/auth/register", handleRegisterFactory(authStore));
+  apiRouter.post("/auth/login", handleLoginFactory(authStore));
+  apiRouter.post("/auth/logout", handleLogoutFactory());
+  apiRouter.get("/auth/me", requireAuth, handleMeFactory());
+
+  const myScheduleRouter = Router();
+  myScheduleRouter.post(
+    "/schedules",
+    requireAuth,
+    handleCreateMyScheduleFactory(userScheduleStore),
+  );
+  myScheduleRouter.get("/schedules", requireAuth, handleListMySchedulesFactory(userScheduleStore));
+  myScheduleRouter.get(
+    "/schedules/:id",
+    requireAuth,
+    handleGetMyScheduleFactory(userScheduleStore),
+  );
+  myScheduleRouter.patch(
+    "/schedules/:id",
+    requireAuth,
+    handleUpdateMyScheduleFactory(userScheduleStore),
+  );
+  myScheduleRouter.delete(
+    "/schedules/:id",
+    requireAuth,
+    handleDeleteMyScheduleFactory(userScheduleStore),
+  );
+  apiRouter.use("/me", myScheduleRouter);
   server.use("/api", apiRouter);
 
   return server;

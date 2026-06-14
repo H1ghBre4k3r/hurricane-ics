@@ -277,3 +277,12 @@ export const lookupScheduleFromToken = (id: string): ScheduleLookupResult => {
   const store = createScheduleStore(DEFAULT_TTL_DAYS);
   return store.get(id);
 };
+
+export const isSignedScheduleId = (id: string): boolean => {
+  const parts = id.split(".");
+  return parts.length === 2 && parts.every((part) => part.length > 0);
+};
+
+export const getSignedScheduleLookup = (id: string): ScheduleLookupResult => {
+  return lookupScheduleFromToken(id);
+};

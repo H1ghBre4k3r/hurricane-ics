@@ -19,6 +19,14 @@ import {
   handleGetScheduleFactory,
 } from "./routes/api/schedule.api";
 import { handleGetScheduleIcsFactory } from "./routes/ics/schedule.ics";
+import { createInMemoryAppStore } from "./appStore";
+import { handleRegisterFactory, handleLoginFactory } from "./routes/api/auth.api";
+import { handleMeFactory } from "./routes/api/auth.api";
+import {
+  handleCreateMyScheduleFactory,
+  handleDeleteMyScheduleFactory,
+  handleListMySchedulesFactory,
+} from "./routes/api/me-schedules.api";
 import { getShowStart } from "./utils";
 
 const festival: FestivalPlan = {
@@ -128,6 +136,7 @@ class MockResponse {
 
   setHeader(name: string, value: string | number | string[]) {
     this.headers[name.toLowerCase()] = value;
+    return this;
   }
 
   end(value: string) {
@@ -206,6 +215,7 @@ const buildSignedScheduleToken = (
 const fetchFestival = async () => festival;
 process.env.SCHEDULE_SIGNING_SECRET ||= "hurricane-ics-development-secret";
 const scheduleStore = createScheduleStore(1);
+const { authStore, userScheduleStore } = createInMemoryAppStore();
 
 const fetchFestivalWithStatus = Object.assign(fetchFestival, {
   getStatus: () => status,
@@ -374,39 +384,39 @@ test("schedule api creates and retrieves shared selections", async () => {
   );
 });
 
-test("schedule api returns 404 for invalid signature", () => {
+test("schedule api returns 404 for invalid signature", async () => {
   const getResponse = makeResponse();
   const secret = process.env.SCHEDULE_SIGNING_SECRET || "hurricane-ics-development-secret";
   const scheduleId = buildSignedScheduleToken(["UNKNOWN_ARTIST"], secret).replace(/.$/, "x");
-  handleGetScheduleFactory(scheduleStore)(
+  await handleGetScheduleFactory(scheduleStore)(
     { params: { scheduleId } } as unknown as Request,
     getResponse,
   );
   assert.equal(getResponse.statusCode, 404);
 });
 
-test("schedule api returns 400 for malformed ids", () => {
+test("schedule api returns 400 for malformed ids", async () => {
   const getResponse = makeResponse();
-  handleGetScheduleFactory(scheduleStore)(
+  await handleGetScheduleFactory(scheduleStore)(
     { params: { scheduleId: "bad-token" } } as unknown as Request,
     getResponse,
   );
   assert.equal(getResponse.statusCode, 400);
 });
 
-test("schedule api returns 404 for expired and unsigned ids", () => {
+test("schedule api returns 404 for expired and unsigned ids", async () => {
   const getResponse = makeResponse();
   const expiredSecret =
     process.env.SCHEDULE_SIGNING_SECRET || "hurricane-ics-development-secret";
   const expiredToken = buildExpiredScheduleToken(["HANSEMÄDCHEN"], expiredSecret);
-  handleGetScheduleFactory(scheduleStore)(
+  await handleGetScheduleFactory(scheduleStore)(
     { params: { scheduleId: expiredToken } } as unknown as Request,
     getResponse,
   );
   assert.equal(getResponse.statusCode, 404);
 
   const invalidSigResponse = makeResponse();
-  handleGetScheduleFactory(scheduleStore)(
+  await handleGetScheduleFactory(scheduleStore)(
     {
       params: {
         scheduleId: `${expiredToken.split(".").slice(0, 1).join(".")}.invalid`,
@@ -429,7 +439,11 @@ test("schedule api rejects missing artist payload", async () => {
 test("schedule calendar endpoint emits events for shared IDs", async () => {
   const schedule = scheduleStore.createOrGet(["HANSEMÄDCHEN"]);
   const res = makeResponse();
-  const handleScheduleIcs = handleGetScheduleIcsFactory(fetchFestival, scheduleStore);
+  const handleScheduleIcs = handleGetScheduleIcsFactory(
+    fetchFestival,
+    scheduleStore,
+    userScheduleStore,
+  );
 
   await handleScheduleIcs(
     { params: { scheduleId: schedule.id } } as unknown as Request,
@@ -441,14 +455,18 @@ test("schedule calendar endpoint emits events for shared IDs", async () => {
 });
 
 test("schedule calendar rejects malformed ids", async () => {
-  const handleScheduleIcs = handleGetScheduleIcsFactory(fetchFestival, scheduleStore);
+  const handleScheduleIcs = handleGetScheduleIcsFactory(
+    fetchFestival,
+    scheduleStore,
+    userScheduleStore,
+  );
 
   const malformedRes = makeResponse();
   await handleScheduleIcs(
     { params: { scheduleId: "bad-token" } } as unknown as Request,
     malformedRes,
   );
-  assert.equal(malformedRes.statusCode, 400);
+  assert.equal(malformedRes.statusCode, 404);
 
   const unknownRes = makeResponse();
   await handleScheduleIcs(
@@ -460,4 +478,107 @@ test("schedule calendar rejects malformed ids", async () => {
     unknownRes,
   );
   assert.equal(unknownRes.statusCode, 404);
+});
+
+test("auth register/login API emits session metadata", async () => {
+  const registerResponse = makeResponse();
+  await handleRegisterFactory(authStore)(
+    { body: { email: "test@example.com", password: "pass12345" } } as Request,
+    registerResponse,
+  );
+  assert.equal(registerResponse.statusCode, 201);
+  assert.ok(registerResponse.headers["set-cookie"]);
+  const registeredUser = registerResponse.jsonBody as {
+    id: string;
+    email: string;
+    createdAt: string;
+  };
+  assert.equal(registeredUser.email, "test@example.com");
+
+  const loginResponse = makeResponse();
+  await handleLoginFactory(authStore)(
+    { body: { email: "test@example.com", password: "pass12345" } } as Request,
+    loginResponse,
+  );
+  assert.equal(loginResponse.statusCode, 200);
+  assert.ok(loginResponse.headers["set-cookie"]);
+});
+
+test("auth register rejects weak credentials", async () => {
+  const response = makeResponse();
+  await handleRegisterFactory(authStore)(
+    { body: { email: "weak@example.com", password: "weak" } } as Request,
+    response,
+  );
+  assert.equal(response.statusCode, 400);
+});
+
+test("me auth endpoint returns session user when present", () => {
+  const response = makeResponse();
+  handleMeFactory()(
+    {
+      authUser: { id: "u1", email: "demo@hurricane.test", createdAt: "2026-01-01T00:00:00.000Z" },
+    } as unknown as Request,
+    response,
+  );
+  assert.equal(response.statusCode, 200);
+  assert.equal((response.jsonBody as { id: string }).id, "u1");
+});
+
+test("user schedule routes and public resolver support persisted IDs", async () => {
+  const createScheduleResponse = makeResponse();
+  await handleCreateMyScheduleFactory(userScheduleStore)(
+    {
+      authUser: { id: "u-calendar", email: "calendar@hurricane.test", createdAt: "2026-01-01T00:00:00.000Z" },
+      body: { artists: ["HANSEMÄDCHEN", "JULI"] },
+    } as unknown as Request,
+    createScheduleResponse,
+  );
+  assert.equal(createScheduleResponse.statusCode, 201);
+
+  const created = createScheduleResponse.jsonBody as {
+    id: string;
+    artists: string[];
+  };
+  assert.equal(created.artists.length, 2);
+
+  const resolvedResponse = makeResponse();
+  await handleGetScheduleFactory(scheduleStore, userScheduleStore)(
+    { params: { scheduleId: created.id } } as unknown as Request,
+    resolvedResponse,
+  );
+  assert.equal(resolvedResponse.statusCode, 200);
+  assert.deepEqual(
+    (resolvedResponse.jsonBody as SharedSchedule).artists.sort(),
+    ["HANSEMÄDCHEN", "JULI"].sort(),
+  );
+
+  const listResponse = makeResponse();
+  await handleListMySchedulesFactory(userScheduleStore)(
+    {
+      authUser: { id: "u-calendar", email: "calendar@hurricane.test", createdAt: "2026-01-01T00:00:00.000Z" },
+    method: "GET",
+    } as unknown as Request,
+    listResponse,
+  );
+  assert.equal(listResponse.statusCode, 200);
+  const list = listResponse.jsonBody as Array<{ id: string }>;
+  assert.equal(list.length, 1);
+
+  const deleteResponse = makeResponse();
+  await handleDeleteMyScheduleFactory(userScheduleStore)(
+    {
+      authUser: { id: "u-calendar", email: "calendar@hurricane.test", createdAt: "2026-01-01T00:00:00.000Z" },
+      params: { id: created.id },
+    } as unknown as Request,
+    deleteResponse,
+  );
+  assert.equal(deleteResponse.statusCode, 204);
+
+  const removedResponse = makeResponse();
+  await handleGetScheduleFactory(scheduleStore, userScheduleStore)(
+    { params: { scheduleId: created.id } } as unknown as Request,
+    removedResponse,
+  );
+  assert.equal(removedResponse.statusCode, 410);
 });
