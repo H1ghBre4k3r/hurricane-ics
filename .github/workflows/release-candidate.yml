@@ -121,7 +121,7 @@ jobs:
                   sys.exit(1)
 
           print("Lockfile marker checks passed.")
-PY
+          PY
 
   verify:
     name: Parse, Build, and Verify
