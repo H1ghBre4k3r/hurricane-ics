@@ -1,34 +1,23 @@
 import { Buffer } from "buffer";
 import React, { useEffect, useMemo, useState } from "react";
-import { FestivalPlan, Show } from "./../../src/types";
+import { FestivalPlan } from "./../../src/types";
 import "./App.css";
 import { Artist } from "./Artist";
+import { MySchedule } from "./MySchedule";
+import {
+  FestivalDay,
+  buildConflictMap,
+  formatDayLabel,
+  groupSelectedShowsByDay,
+  normalize,
+} from "./schedule";
 import { parseDate } from "./utils";
-
-type FestivalDay = {
-  day: string;
-  events: Show[];
-};
 
 type FetchState = "loading" | "ready" | "empty" | "error";
 type CopyState = "idle" | "copied" | "failed";
+type ScheduleView = "lineup" | "my-schedule";
 
 const SELECTIONS_STORAGE_KEY = "hurricane-ics:selected-artists";
-
-const normalize = (value: string): string => {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-};
-
-const formatDayLabel = (rawDay: string): string => {
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-  }).format(parseDate(rawDay, "00:00"));
-};
 
 const formatDateRange = (days: FestivalDay[]): string => {
   if (!days.length) {
@@ -77,25 +66,6 @@ const makeCalendarUrl = (
   return artists.length ? `${base}/artist/?q=${encodeArtists(artists)}` : base;
 };
 
-const getShowStart = (show: Show): Date => {
-  return parseDate(show.date_start, show.time_start);
-};
-
-const getShowEnd = (show: Show): Date => {
-  const start = getShowStart(show);
-  const end = parseDate(show.date_start, show.time_end);
-
-  while (end <= start) {
-    end.setDate(end.getDate() + 1);
-  }
-
-  return end;
-};
-
-const showsOverlap = (a: Show, b: Show): boolean => {
-  return getShowStart(a) < getShowEnd(b) && getShowStart(b) < getShowEnd(a);
-};
-
 const readStoredSelections = (): { [key: string]: boolean } => {
   try {
     const raw = window.localStorage.getItem(SELECTIONS_STORAGE_KEY);
@@ -136,6 +106,7 @@ const App = () => {
   }>({});
   const [selectedOnly, setSelectedOnly] = useState(false);
   const [copyState, setCopyState] = useState<CopyState>("idle");
+  const [scheduleView, setScheduleView] = useState<ScheduleView>("lineup");
 
   useEffect(() => {
     let cancelled = false;
@@ -257,20 +228,20 @@ const App = () => {
     [allShows, selections],
   );
 
-  const conflictingArtists = useMemo(() => {
-    const conflicts = new Set<string>();
+  const selectedDays = useMemo(
+    () => groupSelectedShowsByDay(festival, selections),
+    [festival, selections],
+  );
 
-    selectedShows.forEach((show, index) => {
-      selectedShows.slice(index + 1).forEach((otherShow) => {
-        if (show.date_start === otherShow.date_start && showsOverlap(show, otherShow)) {
-          conflicts.add(show.artist.name);
-          conflicts.add(otherShow.artist.name);
-        }
-      });
-    });
+  const conflictMap = useMemo(
+    () => buildConflictMap(selectedShows),
+    [selectedShows],
+  );
 
-    return conflicts;
-  }, [selectedShows]);
+  const conflictingArtists = useMemo(
+    () => new Set(Object.keys(conflictMap)),
+    [conflictMap],
+  );
 
   const host = window.location.host;
   const calendarHref = selectedArtists.length
@@ -432,8 +403,14 @@ const App = () => {
           <>
             <div className="schedule__header">
               <div>
-                <p className="section-kicker">Lineup</p>
-                <h2>{formatDayLabel(activeFestivalDay.day)}</h2>
+                <p className="section-kicker">
+                  {scheduleView === "lineup" ? "Lineup" : "My Schedule"}
+                </p>
+                <h2>
+                  {scheduleView === "lineup"
+                    ? formatDayLabel(activeFestivalDay.day)
+                    : "My Schedule"}
+                </h2>
               </div>
               <div className="schedule__actions">
                 <a
@@ -458,114 +435,151 @@ const App = () => {
               </div>
             </div>
 
-            <div className="planner-panel">
-              <label className="search-field">
-                <span>Search artist</span>
-                <input
-                  type="search"
-                  placeholder="Try Florence, Kraftklub, Hansemädchen..."
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </label>
-
-              <div className="filter-row" aria-label="Stage filters">
-                {stageOptions.map((stage) => (
-                  <button
-                    className={`filter-chip ${
-                      selectedStages[stage] ? "filter-chip--active" : ""
-                    }`}
-                    key={stage}
-                    type="button"
-                    onClick={() => toggleFilter(stage, setSelectedStages)}
-                  >
-                    {stage}
-                  </button>
-                ))}
-              </div>
-
-              <div className="filter-row" aria-label="Category filters">
-                {categoryOptions.map((category) => (
-                  <button
-                    className={`filter-chip ${
-                      selectedCategories[category] ? "filter-chip--active" : ""
-                    }`}
-                    key={category}
-                    type="button"
-                    onClick={() => toggleFilter(category, setSelectedCategories)}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-
-              <div className="planner-actions">
-                <button
-                  className={`toggle-button ${
-                    selectedOnly ? "toggle-button--active" : ""
-                  }`}
-                  type="button"
-                  onClick={() => setSelectedOnly((current) => !current)}
-                >
-                  Selected only
-                </button>
-                <button
-                  className="ghost-button"
-                  type="button"
-                  disabled={!hasFilters}
-                  onClick={clearFilters}
-                >
-                  Clear filters
-                </button>
-                <button
-                  className="ghost-button"
-                  type="button"
-                  disabled={!selectedArtists.length}
-                  onClick={clearSelections}
-                >
-                  Clear selections
-                </button>
-              </div>
+            <div className="view-switch" aria-label="Schedule view">
+              <button
+                className={`view-switch__button ${
+                  scheduleView === "lineup" ? "view-switch__button--active" : ""
+                }`}
+                type="button"
+                onClick={() => setScheduleView("lineup")}
+              >
+                Lineup
+              </button>
+              <button
+                className={`view-switch__button ${
+                  scheduleView === "my-schedule"
+                    ? "view-switch__button--active"
+                    : ""
+                }`}
+                type="button"
+                onClick={() => setScheduleView("my-schedule")}
+              >
+                My Schedule
+              </button>
             </div>
 
-            <nav className="day-tabs" aria-label="Festival days">
-              {festival.map((day) => (
-                <button
-                  className={`day-tab ${
-                    day.day === activeDay ? "day-tab--active" : ""
-                  }`}
-                  key={day.day}
-                  type="button"
-                  onClick={() => setActiveDay(day.day)}
-                >
-                  <span>{formatDayLabel(day.day)}</span>
-                  <small>{day.events.length} shows</small>
-                </button>
-              ))}
-            </nav>
+            {scheduleView === "lineup" ? (
+              <>
+                <div className="planner-panel">
+                  <label className="search-field">
+                    <span>Search artist</span>
+                    <input
+                      type="search"
+                      placeholder="Try Florence, Kraftklub, Hansemädchen..."
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                    />
+                  </label>
 
-            {filteredShows.length ? (
-              <div className="artist-grid">
-                {filteredShows.map((show) => (
-                  <Artist
-                    show={show}
-                    key={`${show.artist.name}-${show.date_start}-${show.time_start}`}
-                    selected={!!selections[show.artist.name]}
-                    hasConflict={conflictingArtists.has(show.artist.name)}
-                    setSelected={(selected) => {
-                      setSelections((curSelections) => ({
-                        ...curSelections,
-                        [show.artist.name]: selected,
-                      }));
-                    }}
-                  />
-                ))}
-              </div>
+                  <div className="filter-row" aria-label="Stage filters">
+                    {stageOptions.map((stage) => (
+                      <button
+                        className={`filter-chip ${
+                          selectedStages[stage] ? "filter-chip--active" : ""
+                        }`}
+                        key={stage}
+                        type="button"
+                        onClick={() => toggleFilter(stage, setSelectedStages)}
+                      >
+                        {stage}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="filter-row" aria-label="Category filters">
+                    {categoryOptions.map((category) => (
+                      <button
+                        className={`filter-chip ${
+                          selectedCategories[category] ? "filter-chip--active" : ""
+                        }`}
+                        key={category}
+                        type="button"
+                        onClick={() => toggleFilter(category, setSelectedCategories)}
+                      >
+                        {category}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="planner-actions">
+                    <button
+                      className={`toggle-button ${
+                        selectedOnly ? "toggle-button--active" : ""
+                      }`}
+                      type="button"
+                      onClick={() => setSelectedOnly((current) => !current)}
+                    >
+                      Selected only
+                    </button>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={!hasFilters}
+                      onClick={clearFilters}
+                    >
+                      Clear filters
+                    </button>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={!selectedArtists.length}
+                      onClick={clearSelections}
+                    >
+                      Clear selections
+                    </button>
+                  </div>
+                </div>
+
+                <nav className="day-tabs" aria-label="Festival days">
+                  {festival.map((day) => (
+                    <button
+                      className={`day-tab ${
+                        day.day === activeDay ? "day-tab--active" : ""
+                      }`}
+                      key={day.day}
+                      type="button"
+                      onClick={() => setActiveDay(day.day)}
+                    >
+                      <span>{formatDayLabel(day.day)}</span>
+                      <small>{day.events.length} shows</small>
+                    </button>
+                  ))}
+                </nav>
+
+                {filteredShows.length ? (
+                  <div className="artist-grid">
+                    {filteredShows.map((show) => (
+                      <Artist
+                        show={show}
+                        key={`${show.artist.name}-${show.date_start}-${show.time_start}`}
+                        selected={!!selections[show.artist.name]}
+                        hasConflict={conflictingArtists.has(show.artist.name)}
+                        setSelected={(selected) => {
+                          setSelections((curSelections) => ({
+                            ...curSelections,
+                            [show.artist.name]: selected,
+                          }));
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="state-panel state-panel--compact">
+                    <h2>No matches</h2>
+                    <p>Try clearing filters or switching to another festival day.</p>
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="state-panel state-panel--compact">
-                <h2>No matches</h2>
-                <p>Try clearing filters or switching to another festival day.</p>
-              </div>
+              <MySchedule
+                selectedDays={selectedDays}
+                selectedCount={selectedArtists.length}
+                calendarHref={calendarHref}
+                copyCalendarUrl={copyCalendarUrl}
+                copyLink={copyLink}
+                showLineup={() => setScheduleView("lineup")}
+                conflictMap={conflictMap}
+              />
             )}
           </>
         )}

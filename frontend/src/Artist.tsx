@@ -1,36 +1,12 @@
 import { FC } from "react";
 import { Show } from "../../src/types";
-import { parseDate } from "./utils";
+import { formatShowTime, getImageUrl } from "./schedule";
 
 type ArtistProps = {
   show: Show;
   selected: boolean;
   hasConflict: boolean;
   setSelected: (selected: boolean) => void;
-};
-
-const formatTime = (show: Show): string => {
-  const start = parseDate(show.date_start, show.time_start);
-  const end = parseDate(show.date_start, show.time_end);
-
-  while (end < start) {
-    end.setDate(end.getDate() + 1);
-  }
-
-  const formatter = new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  return `${formatter.format(start)} - ${formatter.format(end)}`;
-};
-
-const getImageUrl = (image: string): string => {
-  if (!image) {
-    return "";
-  }
-
-  return image.startsWith("http") ? image : `https://hurricane.de${image}`;
 };
 
 export const Artist: FC<ArtistProps> = ({
@@ -57,7 +33,7 @@ export const Artist: FC<ArtistProps> = ({
         ) : (
           <span className="artist-card__fallback">{name.charAt(0)}</span>
         )}
-        <span className="artist-card__time">{formatTime(show)}</span>
+        <span className="artist-card__time">{formatShowTime(show)}</span>
       </span>
 
       <span className="artist-card__body">
