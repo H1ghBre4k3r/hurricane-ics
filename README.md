@@ -72,7 +72,7 @@ the `deploy/k3s-manifests` branch on each run.
   - `.github/workflows/release-candidate.yml` does **not** push manifests or images.
   - It only runs parse/build/test + static checks and uploads review artifacts.
 - Release candidate verification:
-  - Artifacts are published from non-`main` branches as
+  - Artifacts are published from PRs targeting `main` and from non-`main` pushes as
     `release-candidate-<commit_sha>`.
   - Use workflow artifacts to inspect `build` and `frontend/build` outputs before approving merges.
 
