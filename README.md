@@ -61,6 +61,21 @@ The backend listens on port `3000` and serves the built React frontend from
 On `main`, `.github/workflows/Docker.yml` updates the pinned manifest and force-updates
 the `deploy/k3s-manifests` branch on each run.
 
+## CI and release checks
+
+- Pull Request flow:
+  - All PRs must pass `.github/workflows/PR.yml` (`build-and-test`).
+  - This is the required gate for merges.
+- Mainline publishing:
+  - `.github/workflows/Docker.yml` remains the only workflow updating
+    `deploy/k3s-manifests`.
+  - `.github/workflows/release-candidate.yml` does **not** push manifests or images.
+  - It only runs parse/build/test + static checks and uploads review artifacts.
+- Release candidate verification:
+  - Artifacts are published from non-`main` branches as
+    `release-candidate-<commit_sha>`.
+  - Use workflow artifacts to inspect `build` and `frontend/build` outputs before approving merges.
+
 ## k3s troubleshooting
 
 1. Check process health: `curl https://hurricane.lome.dev/healthz`

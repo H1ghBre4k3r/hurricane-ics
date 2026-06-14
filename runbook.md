@@ -42,3 +42,18 @@ If the upstream scrape is temporarily down:
    - `curl https://hurricane.lome.dev/api/status`
    - `curl -I https://hurricane.lome.dev/ics`
 5. For a hard cleanup, manually trigger the workflow with `workflow_dispatch` to force a fresh scrape attempt.
+
+## Delivery and release manager checklist
+
+Before promoting from release candidate to `main`, confirm:
+
+1. `release-candidate-<sha>` artifacts are present and include:
+   - `build`
+   - `frontend/build`
+2. PR check workflow passed:
+   - `PR.yml` (`build-and-test`) is green.
+3. Release-candidate static checks passed:
+   - workflow/manifests YAML lint checks
+   - lockfile consistency checks
+4. `k8s/hurricane-ics.yml` is pinned to the intended SHA image tag in `deploy/k3s-manifests`.
+5. Manifest branch updates come only from the main publish workflow.

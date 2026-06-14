@@ -13,9 +13,120 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  static_checks:
+    name: Static checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Report runtime context
+        run: |
+          node --version
+          npm --version
+          ruby --version
+          echo "Workflow SHA: ${{ github.sha }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Actor: ${{ github.actor }}"
+
+      - name: Lint YAML files
+        run: |
+          ruby - <<'RUBY'
+          require "yaml"
+
+          paths = [
+            ".github/workflows/PR.yml",
+            ".github/workflows/Docker.yml",
+            ".github/workflows/release-candidate.yml",
+            "k8s/hurricane-ics.yml",
+          ]
+
+          failures = []
+
+          paths.each do |path|
+            begin
+              doc = YAML.load_file(path)
+            rescue Psych::Exception => ex
+              failures << "#{path}: YAML parse failure: #{ex.message}"
+              next
+            end
+
+            if doc.nil?
+              failures << "#{path}: YAML is empty"
+            end
+          end
+
+          if failures.any?
+            STDERR.puts "YAML lint failed:"
+            failures.each { |failure| STDERR.puts " - #{failure}" }
+            exit 1
+          end
+
+          puts "YAML lint passed for:"
+          paths.each { |path| puts " - #{path}" }
+          RUBY
+
+      - name: Validate lockfile consistency
+        run: |
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          checks = [
+              ("package.json", "package-lock.json"),
+              ("frontend/package.json", "frontend/package-lock.json"),
+          ]
+
+          for pkg_path, lock_path in checks:
+              manifest = json.loads(pathlib.Path(pkg_path).read_text())
+              lock = json.loads(pathlib.Path(lock_path).read_text())
+
+              root_deps = set((manifest.get("dependencies") or {}).keys())
+              root_dev_deps = set((manifest.get("devDependencies") or {}).keys())
+
+              lock_packages = lock.get("packages", {})
+              root_lock = lock_packages.get("", {})
+              lock_deps = set((root_lock.get("dependencies") or {}).keys()) | set(
+                  (root_lock.get("devDependencies") or {}).keys()
+              )
+
+              missing = sorted((root_deps | root_dev_deps) - lock_deps)
+              if missing:
+                  print(
+                      f"{lock_path} is missing {len(missing)} package(s) from {pkg_path}: "
+                      f"{', '.join(missing)}",
+                      file=sys.stderr,
+                  )
+                  sys.exit(1)
+
+          print("Lockfile dependency checks passed.")
+
+          yaml_files = [
+              ".github/workflows/PR.yml",
+              ".github/workflows/Docker.yml",
+              ".github/workflows/release-candidate.yml",
+          ]
+          for path in yaml_files:
+              content = pathlib.Path(path).read_text()
+              if not content.strip():
+                  print(f"{path} is empty", file=sys.stderr)
+                  sys.exit(1)
+
+          for path in ["package-lock.json", "frontend/package-lock.json"]:
+              data = json.loads(pathlib.Path(path).read_text())
+              if "lockfileVersion" not in data:
+                  print(f"{path} missing lockfileVersion", file=sys.stderr)
+                  sys.exit(1)
+
+          print("Lockfile marker checks passed.")
+PY
+
   verify:
     name: Parse, Build, and Verify
     runs-on: ubuntu-latest
+    needs: [static_checks]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -41,48 +152,6 @@ jobs:
 
       - name: Build project
         run: npm run build
-
-      - name: Validate configuration files
-        run: |
-          python3 - <<'PY'
-          import json
-          import pathlib
-          import sys
-
-          yaml_files = [
-              ".github/workflows/PR.yml",
-              ".github/workflows/Docker.yml",
-              "k8s/hurricane-ics.yml",
-          ]
-          for path in yaml_files:
-              content = pathlib.Path(path).read_text()
-              if not content.strip():
-                  print(f"{path} is empty", file=sys.stderr)
-                  sys.exit(1)
-
-          for path in ["package-lock.json", "frontend/package-lock.json"]:
-              data = json.loads(pathlib.Path(path).read_text())
-              if "lockfileVersion" not in data:
-                  print(f"{path} missing lockfileVersion", file=sys.stderr)
-                  sys.exit(1)
-
-          def check_lock_consistency(pkg_path, lock_path):
-              manifest = json.loads(pathlib.Path(pkg_path).read_text())
-              lock = json.loads(pathlib.Path(lock_path).read_text())
-              root_deps = set((manifest.get("dependencies") or {}).keys())
-              root_dev_deps = set((manifest.get("devDependencies") or {}).keys())
-              lock_packages = lock.get("packages", {})
-              root_lock = lock_packages.get("", {})
-              lock_deps = set((root_lock.get("dependencies") or {}).keys()) | set((root_lock.get("devDependencies") or {}).keys())
-
-              missing = sorted((root_deps | root_dev_deps) - lock_deps)
-              if missing:
-                  print(f"{lock_path} is missing lock entries: {', '.join(missing)}", file=sys.stderr)
-                  sys.exit(1)
-
-          check_lock_consistency("package.json", "package-lock.json")
-          check_lock_consistency("frontend/package.json", "frontend/package-lock.json")
-          PY
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
