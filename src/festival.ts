@@ -80,8 +80,9 @@ const extractAttribute = (value: string, attribute: string): string => {
 };
 
 const extractText = (value: string, className: string): string => {
+  const escapedClassName = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = new RegExp(
-    `<[^>]*class="[^"]*${className}[^"]*"[^>]*>([\\\\s\\\\S]*?)<\\\\/[^>]+>`,
+    `<[^>]*class="[^"]*${escapedClassName}[^"]*"[^>]*>([\\s\\S]*?)</[^>]+>`,
   ).exec(value);
   return match ? stripTags(match[1]) : "";
 };
@@ -218,10 +219,7 @@ export const parseFestivalPlanWithDiagnostics = (
     const nextDayStart = days[index + 1]?.index || raw.length;
     const dayHtml = raw.slice(dayStart, nextDayStart);
     const dateStart = parseDateStart(year, dayMatch[1]);
-    const showRegex = new RegExp(
-      `<a[^>]*class="[^"]*m0132_lineupv2__show[^"]*"([^>]*)>([\\\\s\\\\S]*?)<\\\\/a>`,
-      "g",
-    );
+    const showRegex = /<a[^>]*class="[^"]*m0132_lineupv2__show[^"]*"([^>]*)>([\s\S]*?)<\/a>/g;
 
     if (process.env.DEBUG_PARSER === "1") {
       const debugShows = collectMatches(showRegex, dayHtml);

@@ -197,6 +197,7 @@ const App = () => {
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const [scheduleView, setScheduleView] =
     useState<ScheduleView>(parseViewFromSearch(window.location.search));
+  const [showOnlyShareable, setShowOnlyShareable] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
   const syncScheduleView = (nextView: ScheduleView) => {
@@ -812,6 +813,7 @@ const App = () => {
                         key={`${show.artist.name}-${show.date_start}-${show.time_start}`}
                         selected={!!selections[show.artist.name]}
                         hasConflict={conflictingArtists.has(show.artist.name)}
+                        conflicts={conflictMap[show.artist.name] || []}
                         setSelected={(selected) => {
                           setSelections((current) => ({
                             ...current,
@@ -829,7 +831,7 @@ const App = () => {
                 )}
               </>
             ) : (
-              <MySchedule
+            <MySchedule
                 selectedDays={selectedDays}
                 selectedCount={selectedArtists.length}
                 calendarHref={calendarHref}
@@ -839,6 +841,8 @@ const App = () => {
                 copyShareLink={() => copyLink(shareUrl, "share-copied")}
                 showLineup={() => syncScheduleView("lineup")}
                 conflictMap={conflictMap}
+                showOnlyShareable={showOnlyShareable}
+                setShowOnlyShareable={setShowOnlyShareable}
               />
             )}
           </>

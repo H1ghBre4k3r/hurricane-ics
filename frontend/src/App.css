@@ -564,6 +564,21 @@ a {
   text-transform: uppercase;
 }
 
+.artist-card__conflicts {
+  background: rgba(216, 92, 73, 0.1);
+  border-radius: 8px;
+  color: #6f362b;
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 8px;
+}
+
+.artist-card__conflicts span {
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
 .calendar-button {
   align-items: center;
   background: #0d6b65;

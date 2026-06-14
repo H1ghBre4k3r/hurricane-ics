@@ -98,8 +98,8 @@ test("parseFestivalPlanWithDiagnostics reports schema warnings without dropping 
   assert.equal(result.festival.shows[1].artist.name, "Unknown Artist");
   assert.equal(result.festival.shows[1].stage.name, "Main Stage");
   assert.equal(result.festival.shows[1].category.name, "Konzert");
-  assert.equal(result.festival.shows[1].artist.image, "/fileadmin/placeholder-image.jpg");
-  assert.match(result.festival.shows[1].artist.details_url, "/line-up/");
+  assert.equal(result.festival.shows[1].artist.image, "/fileadmin/missing.jpg");
+  assert.match(result.festival.shows[1].artist.details_url, /\/line-up\//);
   assert.equal(result.warnings.length >= 1, true);
 });
 

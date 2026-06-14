@@ -1,11 +1,13 @@
 import { FC } from "react";
 import { Show } from "../../src/types";
 import { formatShowTime, getImageUrl } from "./schedule";
+import { ConflictDetail } from "./schedule";
 
 type ArtistProps = {
   show: Show;
   selected: boolean;
   hasConflict: boolean;
+  conflicts: ConflictDetail[];
   setSelected: (selected: boolean) => void;
 };
 
@@ -13,6 +15,7 @@ export const Artist: FC<ArtistProps> = ({
   show,
   selected,
   hasConflict,
+  conflicts,
   setSelected,
 }) => {
   const name = show.artist.name;
@@ -48,6 +51,15 @@ export const Artist: FC<ArtistProps> = ({
         </span>
         {hasConflict && (
           <span className="artist-card__conflict">Time conflict</span>
+        )}
+        {conflicts.length > 0 && (
+          <div className="artist-card__conflicts" aria-live="polite">
+            {conflicts.map((conflict) => (
+              <span key={`${conflict.artist}-${conflict.overlap}`}>
+                {conflict.artist}: {conflict.overlap}
+              </span>
+            ))}
+          </div>
         )}
       </span>
     </button>

@@ -16,6 +16,8 @@ type MyScheduleProps = {
   copyShareLink: () => void;
   showLineup: () => void;
   conflictMap: ShowConflictMap;
+  showOnlyShareable: boolean;
+  setShowOnlyShareable: (value: boolean) => void;
 };
 
 const getInitial = (show: Show): string => {
@@ -30,16 +32,32 @@ export const MySchedule: FC<MyScheduleProps> = ({
   copyShareLink,
   showLineup,
   conflictMap,
+  showOnlyShareable,
+  setShowOnlyShareable,
 }) => {
-  if (!selectedCount) {
+  const isShareable = (show: Show): boolean => show.artist.details_url !== "/line-up/";
+
+  const filteredDays = selectedDays
+    .map((day) => ({
+      ...day,
+      events: day.events.filter((show) =>
+        showOnlyShareable ? isShareable(show) : true),
+    }))
+    .filter((day) => day.events.length > 0);
+
+  const visiblePickCount = filteredDays.reduce((memo, day) => memo + day.events.length, 0);
+
+  if (!selectedCount || !visiblePickCount) {
+    const emptyMessage =
+      selectedCount === 0
+        ? "Select artists from the lineup to build a festival timeline and create your personal calendar feed."
+        : "No shareable picks match your filter. Toggle off shareable-only to show all selections.";
+
     return (
       <div className="itinerary-empty state-panel">
         <p className="section-kicker">My Schedule</p>
-        <h2>No picks yet</h2>
-        <p>
-          Select artists from the lineup to build a festival timeline and create
-          your personal calendar feed.
-        </p>
+        <h2>{selectedCount === 0 ? "No picks yet" : "No matching picks"}</h2>
+        <p>{emptyMessage}</p>
         <button className="calendar-button" type="button" onClick={showLineup}>
           Browse lineup
         </button>
@@ -74,11 +92,19 @@ export const MySchedule: FC<MyScheduleProps> = ({
           <button className="ghost-button" type="button" onClick={copyShareLink}>
             Share picks
           </button>
+          <button
+            className="toggle-button"
+            type="button"
+            aria-pressed={showOnlyShareable}
+            onClick={() => setShowOnlyShareable(!showOnlyShareable)}
+          >
+            {showOnlyShareable ? "Show unavailable shares" : "Only shareable picks"}
+          </button>
         </div>
       </div>
 
       <div className="itinerary__days">
-        {selectedDays.map((day) => (
+        {filteredDays.map((day) => (
           <section className="itinerary-day" key={day.day}>
             <div className="itinerary-day__header">
               <p className="section-kicker">Festival day</p>
