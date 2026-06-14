@@ -51,6 +51,18 @@ export type LineupParseWarning = {
   message: string;
 };
 
+export type SharedSchedule = {
+  id: string;
+  artists: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ScheduleStore = {
+  createOrGet: (artists: string[]) => SharedSchedule;
+  get: (id: string) => SharedSchedule | undefined;
+};
+
 export type UpstreamLineupHealth = {
   url: string;
   sourceMarker: string | null;

@@ -4,6 +4,8 @@
 - Scrapes `https://hurricane.de/line-up/`.
 - Serves `ics` calendar feeds on the backend.
 - Exposes `/api/concerts` for frontend data and `/api/status` for cache health.
+- `POST /api/schedule` and `/api/schedule/:scheduleId` provide shared schedule IDs used by
+  `/?schedule=<id>` URLs and `/ics/schedule/<id>` feeds.
 
 ## Branches
 - `main`: mainline application build and source of truth.

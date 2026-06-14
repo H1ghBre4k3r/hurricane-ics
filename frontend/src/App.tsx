@@ -17,9 +17,11 @@ import {
 } from "./schedule";
 import {
   getSharedArtistsFromSearch,
+  getSharedScheduleFromSearch,
   makeCalendarUrl,
   makeSelectionMap,
   makeShareUrl,
+  makeScheduleCalendarUrl,
 } from "./share";
 import { parseDate } from "./utils";
 
@@ -33,6 +35,10 @@ type CopySuccessState = Exclude<CopyState, "idle" | "failed">;
 type ScheduleView = "lineup" | "my-schedule";
 
 const SELECTIONS_STORAGE_KEY = "hurricane-ics:selected-artists";
+const SCHEDULE_CACHE_STORAGE_KEY = "hurricane-ics:schedule-cache";
+const SCHEDULE_SEPARATOR = "\u0000";
+
+type CachedScheduleMap = { [artistKey: string]: string };
 
 const parseViewFromSearch = (search: string): ScheduleView => {
   const params = new URLSearchParams(search);
@@ -146,6 +152,70 @@ const readStoredSelections = (): { [key: string]: boolean } => {
   }
 };
 
+const normalizeArtistList = (artists: string[]): string[] => {
+  return Array.from(
+    new Set(
+      artists
+        .map((artist) => artist.trim())
+        .filter((artist) => artist.length > 0),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+};
+
+const makeArtistListKey = (artists: string[]): string => {
+  return normalizeArtistList(artists).join(SCHEDULE_SEPARATOR);
+};
+
+const readScheduleCache = (): CachedScheduleMap => {
+  try {
+    const raw = window.localStorage.getItem(SCHEDULE_CACHE_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return {};
+    }
+
+    return Object.entries(parsed).reduce<CachedScheduleMap>((memo, [key, value]) => {
+      if (typeof key === "string" && typeof value === "string") {
+        memo[key] = value;
+      }
+      return memo;
+    }, {});
+  } catch (error) {
+    console.error(error);
+    return {};
+  }
+};
+
+const writeScheduleCache = (cache: CachedScheduleMap): void => {
+  try {
+    window.localStorage.setItem(
+      SCHEDULE_CACHE_STORAGE_KEY,
+      JSON.stringify(cache),
+    );
+  } catch {
+    // Keep silent if browser restrictions prevent local storage writes.
+  }
+};
+
+const readScheduleFromCache = (
+  cache: CachedScheduleMap,
+  artists: string[],
+): string | null => {
+  const key = makeArtistListKey(artists);
+  return cache[key] || null;
+};
+
+const writeScheduleToCache = (cache: CachedScheduleMap, artists: string[], id: string): CachedScheduleMap => {
+  const key = makeArtistListKey(artists);
+  const nextCache = { ...cache, [key]: id };
+  writeScheduleCache(nextCache);
+  return nextCache;
+};
+
 const mapShowsToDays = (shows: Show[]): FestivalDay[] => {
   return sortShowsByStart(shows).reduce<FestivalDay[]>((memo, show) => {
     if (!memo.length || memo[memo.length - 1].day !== show.date_start) {
@@ -178,8 +248,17 @@ const App = () => {
     health: null,
   });
   const [selectedArtistsRequestId, setSelectedArtistsRequestId] = useState(0);
+  const [sharedScheduleId] = useState<string | null>(() =>
+    getSharedScheduleFromSearch(window.location.search),
+  );
   const [sharedArtists] = useState<string[]>(() =>
     getSharedArtistsFromSearch(window.location.search),
+  );
+  const [scheduleId, setScheduleId] = useState<string | null>(() =>
+    getSharedScheduleFromSearch(window.location.search),
+  );
+  const [scheduleCache, setScheduleCache] = useState<CachedScheduleMap>(() =>
+    readScheduleCache(),
   );
   const [sharedSelectionsApplied, setSharedSelectionsApplied] = useState(false);
   const [sharedPicksLoaded, setSharedPicksLoaded] = useState(false);
@@ -264,6 +343,44 @@ const App = () => {
     }
   }, [festival.length]);
 
+  const ensureScheduleId = useCallback(
+    async (artists: string[]): Promise<string | null> => {
+      if (!artists.length) {
+        return null;
+      }
+
+      const cached = readScheduleFromCache(scheduleCache, artists);
+      if (cached) {
+        return cached;
+      }
+
+      try {
+        const response = await fetch("/api/schedule", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ artists }),
+        });
+
+        if (!response.ok) {
+          return null;
+        }
+
+        const payload = (await response.json()) as { id: string };
+        if (typeof payload?.id === "string" && payload.id.length > 0) {
+          setScheduleCache((cache) => writeScheduleToCache(cache, artists, payload.id));
+          return payload.id;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+
+      return null;
+    },
+    [scheduleCache],
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -296,6 +413,86 @@ const App = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!allShows.length) {
+      return;
+    }
+
+    const applySharedArtists = (artists: string[]) => {
+      const artistNames = new Set(allShows.map((show) => show.artist.name));
+      const currentSharedArtists = normalizeArtistList(artists).filter((artist) =>
+        artistNames.has(artist),
+      );
+
+      if (currentSharedArtists.length) {
+        setSelections(makeSelectionMap(currentSharedArtists));
+        setSharedPicksLoaded(true);
+      }
+
+      setSharedSelectionsApplied(true);
+    };
+
+    if (sharedSelectionsApplied) {
+      return;
+    }
+
+    if (!sharedScheduleId) {
+      applySharedArtists(sharedArtists);
+      return;
+    }
+
+    let cancelled = false;
+
+    const applySharedSchedule = async () => {
+      try {
+        const response = await fetch(`/api/schedule/${encodeURIComponent(sharedScheduleId)}`);
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.ok) {
+          console.warn(
+            JSON.stringify({
+              event: "shared-schedule-load-failed",
+              scheduleId: sharedScheduleId,
+              status: response.status,
+            }),
+          );
+          applySharedArtists(sharedArtists);
+          return;
+        }
+
+        const payload = (await response.json()) as { artists?: unknown; id?: string };
+        if (!Array.isArray(payload.artists)) {
+          applySharedArtists(sharedArtists);
+          return;
+        }
+
+        const artists = normalizeArtistList(
+          payload.artists.filter((value): value is string => typeof value === "string"),
+        );
+        if (!artists.length) {
+          applySharedArtists([]);
+          return;
+        }
+
+        setScheduleCache((cache) => writeScheduleToCache(cache, artists, sharedScheduleId));
+        setScheduleId(sharedScheduleId);
+        applySharedArtists(artists);
+      } catch {
+        if (!cancelled) {
+          applySharedArtists(sharedArtists);
+        }
+      }
+    };
+
+    void applySharedSchedule();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [allShows, sharedArtists, sharedScheduleId, sharedSelectionsApplied]);
+
   const allShows = useMemo(
     () => festival.flatMap((day) => day.events),
     [festival],
@@ -307,22 +504,8 @@ const App = () => {
     }
 
     const artistNames = new Set(allShows.map((show) => show.artist.name));
-
-    if (!sharedSelectionsApplied && sharedArtists.length) {
-      setSharedSelectionsApplied(true);
-
-      const currentSharedArtists = sharedArtists.filter((artist) =>
-        artistNames.has(artist),
-      );
-      if (currentSharedArtists.length) {
-        setSelections(makeSelectionMap(currentSharedArtists));
-        setSharedPicksLoaded(true);
-        return;
-      }
-    }
-
-    setSelections((curSelections) => {
-      const filteredSelections = Object.entries(curSelections).reduce<{
+    setSelections((current) => {
+      const filteredSelections = Object.entries(current).reduce<{
         [key: string]: boolean;
       }>((memo, [artist, selected]) => {
         if (selected && artistNames.has(artist)) {
@@ -332,7 +515,7 @@ const App = () => {
       }, {});
       return filteredSelections;
     });
-  }, [allShows, sharedArtists, sharedSelectionsApplied]);
+  }, [allShows]);
 
   useEffect(() => {
     if (festival.length === 0) {
@@ -344,6 +527,38 @@ const App = () => {
       setActiveDay(festival[0]?.day || "");
     }
   }, [activeDay, festival]);
+
+  useEffect(() => {
+    const artists = normalizeArtistList(
+      Object.entries(selections)
+        .filter(([_, selected]) => selected)
+        .map(([name]) => name),
+    );
+
+    if (!artists.length) {
+      setScheduleId(sharedScheduleId);
+      return;
+    }
+
+    let cancelled = false;
+
+    const resolve = async () => {
+      const nextId = await ensureScheduleId(artists);
+      if (cancelled) {
+        return;
+      }
+
+      if (nextId) {
+        setScheduleId(nextId);
+      }
+    };
+
+    void resolve();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ensureScheduleId, selections, sharedScheduleId]);
 
   useEffect(() => {
     try {
@@ -360,6 +575,10 @@ const App = () => {
       // Browsers can reject storage writes in private or locked-down modes.
     }
   }, [selections]);
+
+  useEffect(() => {
+    writeScheduleCache(scheduleCache);
+  }, [scheduleCache]);
 
   const selectedArtists = useMemo(
     () =>
@@ -453,12 +672,20 @@ const App = () => {
 
   const host = window.location.host;
   const fullCalendarHref = makeCalendarUrl("webcal", host, []);
-  const calendarHref = selectedArtists.length
+  const scheduleCalendarHref =
+    selectedArtists.length && scheduleId
+      ? makeScheduleCalendarUrl("webcal", host, scheduleId)
+      : "";
+  const calendarHref = scheduleCalendarHref || (selectedArtists.length
     ? makeCalendarUrl("webcal", host, selectedArtists)
-    : "";
-  const copyCalendarUrl = makeCalendarUrl("https", host, selectedArtists);
+    : "");
+  const copyCalendarUrl = scheduleId
+    ? makeScheduleCalendarUrl("https", host, scheduleId)
+    : makeCalendarUrl("https", host, selectedArtists);
   const copyFullCalendarUrl = makeCalendarUrl("https", host, []);
-  const shareUrl = selectedArtists.length ? makeShareUrl(host, selectedArtists) : "";
+  const shareUrl = selectedArtists.length
+    ? makeShareUrl(host, selectedArtists, scheduleId)
+    : "";
 
   const clearFilters = () => {
     setSearch("");

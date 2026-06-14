@@ -1,6 +1,7 @@
 import { Buffer } from "buffer";
 
 export const SHARE_QUERY_PARAM = "artists";
+export const SCHEDULE_QUERY_PARAM = "schedule";
 
 export const encodeArtists = (artists: string[]): string => {
   return encodeURIComponent(
@@ -42,6 +43,20 @@ export const getSharedArtistsFromSearch = (search: string): string[] => {
   return decodeArtists(params.get(SHARE_QUERY_PARAM));
 };
 
+export const getSharedScheduleFromSearch = (search: string): string | null => {
+  const params = new URLSearchParams(search);
+  const scheduleId = params.get(SCHEDULE_QUERY_PARAM);
+  if (!scheduleId) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(scheduleId);
+  } catch {
+    return null;
+  }
+};
+
 export const makeSelectionMap = (
   artists: string[],
 ): { [key: string]: boolean } => {
@@ -60,8 +75,22 @@ export const makeCalendarUrl = (
   return artists.length ? `${base}/artist/?q=${encodeArtists(artists)}` : base;
 };
 
-export const makeShareUrl = (host: string, artists: string[]): string => {
+export const makeScheduleCalendarUrl = (
+  protocol: "https" | "webcal",
+  host: string,
+  scheduleId: string,
+): string => `${protocol}://${host}/ics/schedule/${encodeURIComponent(scheduleId)}`;
+
+export const makeShareUrl = (
+  host: string,
+  artists: string[],
+  scheduleId: string | null = null,
+): string => {
   const base = `https://${host}/`;
+  if (scheduleId) {
+    return `${base}?${SCHEDULE_QUERY_PARAM}=${encodeURIComponent(scheduleId)}`;
+  }
+
   return artists.length
     ? `${base}?${SHARE_QUERY_PARAM}=${encodeArtists(artists)}`
     : base;

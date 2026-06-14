@@ -7,7 +7,17 @@ import { handleHealthCheck } from "./routes/health";
 import { handleGetArtistIcsFactory } from "./routes/ics/artist.ics";
 import { handleGetDayIcsFactory } from "./routes/ics/day.ics";
 import { handleGetIndexIcsFactory } from "./routes/ics/index.ics";
-import { FestivalFetchStatus, FestivalPlan } from "./types";
+import {
+  FestivalFetchStatus,
+  FestivalPlan,
+  SharedSchedule,
+  ScheduleStore,
+} from "./types";
+import {
+  handleCreateScheduleFactory,
+  handleGetScheduleFactory,
+} from "./routes/api/schedule.api";
+import { handleGetScheduleIcsFactory } from "./routes/ics/schedule.ics";
 import { getShowStart } from "./utils";
 
 const festival: FestivalPlan = {
@@ -144,6 +154,43 @@ const encodeArtists = (artists: string[]): string => {
   return Buffer.from(JSON.stringify(artists)).toString("base64");
 };
 
+const createTestSchedule = (id: string, artists: string[]): SharedSchedule => ({
+  id,
+  artists,
+  createdAt: "2026-06-14T10:00:00.000Z",
+  updatedAt: "2026-06-14T10:00:00.000Z",
+});
+
+const makeScheduleStore = (): ScheduleStore => {
+  const schedules = new Map<string, SharedSchedule>();
+  const artistBuckets = new Map<string, string>();
+
+  return {
+    createOrGet: (artists: string[]) => {
+      const key = artists
+        .map((artist) => artist.trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
+        .join("|");
+      const existingId = artistBuckets.get(key);
+      if (existingId) {
+        return schedules.get(existingId) as SharedSchedule;
+      }
+
+      const id = `sched-${Math.random().toString(16).slice(2, 10)}`;
+      const schedule = createTestSchedule(id, artists);
+      schedules.set(id, schedule);
+      artistBuckets.set(key, id);
+      return schedule;
+    },
+    get: (id: string) => {
+      return schedules.get(id);
+    },
+  };
+};
+
+const scheduleStore = makeScheduleStore();
+
 const fetchFestival = async () => festival;
 const fetchFestivalWithStatus = Object.assign(fetchFestival, {
   getStatus: () => status,
@@ -248,7 +295,7 @@ test("festival-night rollover uses the next calendar day", () => {
   assert.equal(actualStart.getMinutes(), 45);
 });
 
-test("day and artist calendar handlers reject invalid requests", async () => {
+  test("day and artist calendar handlers reject invalid requests", async () => {
   const invalidDayRes = makeResponse();
   await handleGetDayIcsFactory(fetchFestival)(
     { params: { day: "wednesday" } } as unknown as Request,
@@ -268,4 +315,63 @@ test("day and artist calendar handlers reject invalid requests", async () => {
     console.error = originalConsoleError;
   }
   assert.equal(invalidArtistRes.statusCode, 400);
+});
+
+test("schedule api creates and retrieves shared selections", async () => {
+  const createResponse = makeResponse();
+  await handleCreateScheduleFactory(scheduleStore)(
+    {
+      body: {
+        artists: ["HANSEMÄDCHEN", "JULI"],
+      },
+    } as Request,
+    createResponse,
+  );
+  assert.equal(createResponse.statusCode, 201);
+  assert.ok((createResponse.jsonBody as SharedSchedule).id);
+
+  const scheduleId = (createResponse.jsonBody as SharedSchedule).id;
+  const getResponse = makeResponse();
+  await handleGetScheduleFactory(scheduleStore)(
+    { params: { scheduleId } } as unknown as Request,
+    getResponse,
+  );
+  assert.equal(getResponse.statusCode, 200);
+  assert.equal(
+    (getResponse.jsonBody as SharedSchedule).artists.length,
+    2,
+  );
+});
+
+test("schedule api returns 404 for missing shared schedule", () => {
+  const getResponse = makeResponse();
+  handleGetScheduleFactory(scheduleStore)(
+    { params: { scheduleId: "missing-id" } } as unknown as Request,
+    getResponse,
+  );
+  assert.equal(getResponse.statusCode, 404);
+});
+
+test("schedule api rejects missing artist payload", async () => {
+  const badResponse = makeResponse();
+  await handleCreateScheduleFactory(scheduleStore)(
+    { body: {} } as Request,
+    badResponse,
+  );
+  assert.equal(badResponse.statusCode, 400);
+});
+
+test("schedule calendar endpoint emits events for shared IDs", async () => {
+  const storedStore = makeScheduleStore();
+  const schedule = storedStore.createOrGet(["HANSEMÄDCHEN"]);
+  const res = makeResponse();
+  const handleScheduleIcs = handleGetScheduleIcsFactory(fetchFestival, storedStore);
+
+  await handleScheduleIcs(
+    { params: { scheduleId: schedule.id } } as unknown as Request,
+    res,
+  );
+
+  assert.equal(countEvents(res.body), 1);
+  assert.match(res.body, /HANSEMÄDCHEN/);
 });

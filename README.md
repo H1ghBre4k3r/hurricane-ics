@@ -12,6 +12,7 @@ feeds for the full lineup, individual days, or selected artists.
 - Legacy full-lineup alias: <https://hurricane.lome.dev/ics/2023>
 - Day feeds: `https://hurricane.lome.dev/ics/day/thursday`, `/friday`, `/saturday`, `/sunday`
 - Selected artists: `https://hurricane.lome.dev/ics/artist/?q=<base64-json-artist-array>`
+- Shared schedule selection feed: `https://hurricane.lome.dev/ics/schedule/<schedule-id>`
 
 The frontend generates `webcal://` subscribe links and copyable `https://` links
 for selected artists.
@@ -19,6 +20,10 @@ for selected artists.
 ## API endpoints
 
 - `GET /api/concerts` returns the parsed `FestivalPlan`.
+- `POST /api/schedule` creates or resolves a shared schedule id for a normalized
+  artist list payload (`{ artists: string[] }`).
+- `GET /api/schedule/:scheduleId` returns the stored artist payload for a shared schedule id.
+- `GET /ics/schedule/:scheduleId` returns the artist filtered ICS feed for a shared schedule id.
 - `GET /api/status` returns scrape/cache metadata:
   - `staleReason` (null unless upstream refresh is being retried from cache)
   - `cacheAvailable`
