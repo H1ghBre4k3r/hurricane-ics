@@ -207,6 +207,21 @@ a {
   outline: none;
 }
 
+.shared-notice {
+  align-items: center;
+  background: rgba(13, 107, 101, 0.1);
+  border: 1px solid rgba(13, 107, 101, 0.22);
+  border-radius: 8px;
+  color: #0d4f4a;
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 900;
+  margin-bottom: 18px;
+  min-height: 40px;
+  padding: 0 14px;
+  width: fit-content;
+}
+
 .day-tabs {
   display: grid;
   gap: 10px;
@@ -826,6 +841,10 @@ a {
   font-weight: 800;
 }
 
+.copy-state--error {
+  color: #a33f31;
+}
+
 .mobile-action__buttons {
   align-items: center;
   display: flex;
@@ -961,7 +980,7 @@ a {
 
   .itinerary__actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .timeline-item__card {
@@ -970,5 +989,24 @@ a {
 
   .timeline-item__body {
     padding: 12px;
+  }
+
+  .mobile-action {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .mobile-action__buttons .calendar-button,
+  .mobile-action__buttons .ghost-button {
+    min-height: 38px;
+    padding: 0 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .mobile-action__buttons {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

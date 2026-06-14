@@ -1,4 +1,3 @@
-import { Buffer } from "buffer";
 import React, { useEffect, useMemo, useState } from "react";
 import { FestivalPlan } from "./../../src/types";
 import "./App.css";
@@ -12,10 +11,17 @@ import {
   normalize,
   sortShowsByStart,
 } from "./schedule";
+import {
+  getSharedArtistsFromSearch,
+  makeCalendarUrl,
+  makeSelectionMap,
+  makeShareUrl,
+} from "./share";
 import { parseDate } from "./utils";
 
 type FetchState = "loading" | "ready" | "empty" | "error";
-type CopyState = "idle" | "copied" | "failed";
+type CopyState = "idle" | "calendar-copied" | "share-copied" | "failed";
+type CopySuccessState = Exclude<CopyState, "idle" | "failed">;
 type ScheduleView = "lineup" | "my-schedule";
 
 const SELECTIONS_STORAGE_KEY = "hurricane-ics:selected-artists";
@@ -52,21 +58,6 @@ const formatFestivalTitle = (days: FestivalDay[]): string => {
   return `Hurricane ${years.join("/")}`;
 };
 
-const encodeArtists = (artists: string[]): string => {
-  return encodeURIComponent(
-    Buffer.from(JSON.stringify(artists)).toString("base64"),
-  );
-};
-
-const makeCalendarUrl = (
-  protocol: "https" | "webcal",
-  host: string,
-  artists: string[],
-): string => {
-  const base = `${protocol}://${host}/ics`;
-  return artists.length ? `${base}/artist/?q=${encodeArtists(artists)}` : base;
-};
-
 const readStoredSelections = (): { [key: string]: boolean } => {
   try {
     const raw = window.localStorage.getItem(SELECTIONS_STORAGE_KEY);
@@ -95,6 +86,13 @@ const App = () => {
   const [festival, setFestival] = useState<FestivalDay[]>([]);
   const [fetchState, setFetchState] = useState<FetchState>("loading");
   const [activeDay, setActiveDay] = useState<string>("");
+  const [sharedArtists] = useState<string[]>(() =>
+    typeof window === "undefined"
+      ? []
+      : getSharedArtistsFromSearch(window.location.search),
+  );
+  const [sharedSelectionsApplied, setSharedSelectionsApplied] = useState(false);
+  const [sharedPicksLoaded, setSharedPicksLoaded] = useState(false);
   const [selections, setSelections] = useState<{ [key: string]: boolean }>(() =>
     typeof window === "undefined" ? {} : readStoredSelections(),
   );
@@ -165,6 +163,20 @@ const App = () => {
     }
 
     const artistNames = new Set(allShows.map((show) => show.artist.name));
+
+    if (!sharedSelectionsApplied && sharedArtists.length) {
+      setSharedSelectionsApplied(true);
+      const currentSharedArtists = sharedArtists.filter((artist) =>
+        artistNames.has(artist),
+      );
+
+      if (currentSharedArtists.length) {
+        setSelections(makeSelectionMap(currentSharedArtists));
+        setSharedPicksLoaded(true);
+        return;
+      }
+    }
+
     setSelections((curSelections) => {
       const cleanedSelections = Object.fromEntries(
         Object.entries(curSelections).filter(
@@ -174,7 +186,7 @@ const App = () => {
 
       return cleanedSelections;
     });
-  }, [allShows]);
+  }, [allShows, sharedArtists, sharedSelectionsApplied]);
 
   const selectedArtists = useMemo(
     () =>
@@ -255,6 +267,7 @@ const App = () => {
   const fullCalendarHref = makeCalendarUrl("webcal", host, []);
   const copyCalendarUrl = makeCalendarUrl("https", host, selectedArtists);
   const copyFullCalendarUrl = makeCalendarUrl("https", host, []);
+  const shareUrl = selectedArtists.length ? makeShareUrl(host, selectedArtists) : "";
 
   const activeFestivalDay = festival.find((day) => day.day === activeDay);
   const activeDayShows = useMemo(
@@ -326,12 +339,13 @@ const App = () => {
 
   const clearSelections = () => {
     setSelections({});
+    setSharedPicksLoaded(false);
   };
 
-  const copyLink = async (url: string) => {
+  const copyLink = async (url: string, successState: CopySuccessState) => {
     try {
       await navigator.clipboard.writeText(url);
-      setCopyState("copied");
+      setCopyState(successState);
     } catch (error) {
       console.error(error);
       setCopyState("failed");
@@ -373,7 +387,7 @@ const App = () => {
             <button
               className="ghost-button ghost-button--light"
               type="button"
-              onClick={() => copyLink(copyFullCalendarUrl)}
+              onClick={() => copyLink(copyFullCalendarUrl, "calendar-copied")}
             >
               Copy full link
             </button>
@@ -433,12 +447,28 @@ const App = () => {
                   }`}
                   type="button"
                   disabled={!selectedArtists.length}
-                  onClick={() => copyLink(copyCalendarUrl)}
+                  onClick={() => copyLink(copyCalendarUrl, "calendar-copied")}
                 >
                   Copy selected link
                 </button>
+                <button
+                  className={`ghost-button ghost-button--desktop ${
+                    selectedArtists.length ? "" : "ghost-button--disabled"
+                  }`}
+                  type="button"
+                  disabled={!selectedArtists.length}
+                  onClick={() => copyLink(shareUrl, "share-copied")}
+                >
+                  Share picks
+                </button>
               </div>
             </div>
+
+            {sharedPicksLoaded && (
+              <div className="shared-notice" role="status">
+                Shared picks loaded
+              </div>
+            )}
 
             <div className="view-switch" aria-label="Schedule view">
               <button
@@ -580,8 +610,10 @@ const App = () => {
                 selectedDays={selectedDays}
                 selectedCount={selectedArtists.length}
                 calendarHref={calendarHref}
-                copyCalendarUrl={copyCalendarUrl}
-                copyLink={copyLink}
+                copyCalendarLink={() =>
+                  copyLink(copyCalendarUrl, "calendar-copied")
+                }
+                copyShareLink={() => copyLink(shareUrl, "share-copied")}
                 showLineup={() => setScheduleView("lineup")}
                 conflictMap={conflictMap}
               />
@@ -600,8 +632,13 @@ const App = () => {
                 ? "Ready for your calendar"
                 : "Choose acts to create a feed"}
           </span>
-          <span className="copy-state">
-            {copyState === "copied" && "Link copied"}
+          <span
+            className={`copy-state ${
+              copyState === "failed" ? "copy-state--error" : ""
+            }`}
+          >
+            {copyState === "calendar-copied" && "Calendar link copied"}
+            {copyState === "share-copied" && "Share link copied"}
             {copyState === "failed" && "Copy failed"}
           </span>
         </div>
@@ -612,7 +649,17 @@ const App = () => {
             }`}
             type="button"
             disabled={!selectedArtists.length}
-            onClick={() => copyLink(copyCalendarUrl)}
+            onClick={() => copyLink(shareUrl, "share-copied")}
+          >
+            Share
+          </button>
+          <button
+            className={`ghost-button ${
+              selectedArtists.length ? "" : "ghost-button--disabled"
+            }`}
+            type="button"
+            disabled={!selectedArtists.length}
+            onClick={() => copyLink(copyCalendarUrl, "calendar-copied")}
           >
             Copy
           </button>

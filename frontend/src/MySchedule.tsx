@@ -12,8 +12,8 @@ type MyScheduleProps = {
   selectedDays: FestivalDay[];
   selectedCount: number;
   calendarHref: string;
-  copyCalendarUrl: string;
-  copyLink: (url: string) => void;
+  copyCalendarLink: () => void;
+  copyShareLink: () => void;
   showLineup: () => void;
   conflictMap: ShowConflictMap;
 };
@@ -26,8 +26,8 @@ export const MySchedule: FC<MyScheduleProps> = ({
   selectedDays,
   selectedCount,
   calendarHref,
-  copyCalendarUrl,
-  copyLink,
+  copyCalendarLink,
+  copyShareLink,
   showLineup,
   conflictMap,
 }) => {
@@ -67,9 +67,12 @@ export const MySchedule: FC<MyScheduleProps> = ({
           <button
             className="ghost-button"
             type="button"
-            onClick={() => copyLink(copyCalendarUrl)}
+            onClick={copyCalendarLink}
           >
             Copy selected link
+          </button>
+          <button className="ghost-button" type="button" onClick={copyShareLink}>
+            Share picks
           </button>
         </div>
       </div>
