@@ -35,8 +35,10 @@
 If the upstream scrape is temporarily down:
 1. Check `GET /api/status` for `stale: true`.
 2. If `cacheAvailable: true`, the frontend can continue to show cached data.
+   - If present, `staleReason` explains why the cache is being used.
 3. If both cache and upstream fail, use the deploy branch history or re-run workflow after confirming source availability.
 4. Verify by requesting:
    - `curl https://hurricane.lome.dev/api/concerts`
    - `curl https://hurricane.lome.dev/api/status`
    - `curl -I https://hurricane.lome.dev/ics`
+5. For a hard cleanup, manually trigger the workflow with `workflow_dispatch` to force a fresh scrape attempt.

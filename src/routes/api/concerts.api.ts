@@ -15,6 +15,7 @@ export const handleGetConcertsApiFactory = (
     const payload = {
       ...festival,
       stale: status.stale,
+      staleReason: status.staleReason,
       cacheAvailable: status.cacheAvailable,
       lastUpdated: status.lastSuccessfulFetch,
       health: status.health,

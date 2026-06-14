@@ -20,12 +20,19 @@ for selected artists.
 
 - `GET /api/concerts` returns the parsed `FestivalPlan`.
 - `GET /api/status` returns scrape/cache metadata:
+  - `staleReason` (null unless upstream refresh is being retried from cache)
   - `cacheAvailable`
   - `lastSuccessfulFetch`
   - `lastAttemptedFetch`
   - `showCount`
   - `lineupDateRange`
   - `lastError`
+- `health` currently tracks upstream drift and parse diagnostics:
+  - `lineupTimestamp` (current parse marker timestamp)
+  - `sourceMarker` (lineup fingerprint)
+  - `parsedShowCount`
+  - `missingMarkers`
+  - `parseWarnings`
 - `GET /healthz` returns `200` when the Express process is running.
 
 ## Development
@@ -49,6 +56,7 @@ The backend listens on port `3000` and serves the built React frontend from
 - K3s manifests are maintained on `deploy/k3s-manifests` with pinned SHA image tags.
 - Optional scrape hardening config:
   - `LINEUP_MARKER_ALLOWLIST` (comma-separated class markers that should remain present).
+  - `DEBUG_PARSER` (`1` to emit parser diagnostics to logs during startup fetch windows).
 
 On `main`, `.github/workflows/Docker.yml` updates the pinned manifest and force-updates
 the `deploy/k3s-manifests` branch on each run.

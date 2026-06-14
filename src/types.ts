@@ -54,8 +54,10 @@ export type LineupParseWarning = {
 export type UpstreamLineupHealth = {
   url: string;
   sourceMarker: string | null;
+  lineupTimestamp: string | null;
   etag: string | null;
   lastModified: string | null;
+  parsedShowCount: number;
   requiredMarkers: string[];
   missingMarkers: string[];
   parseWarnings: LineupParseWarning[];
@@ -64,6 +66,7 @@ export type UpstreamLineupHealth = {
 export type FestivalFetchStatus = {
   cacheAvailable: boolean;
   stale: boolean;
+  staleReason: string | null;
   lastSuccessfulFetch: string | null;
   lastAttemptedFetch: string | null;
   showCount: number;
@@ -75,6 +78,7 @@ export type FestivalFetchStatus = {
 export type ConcertsApiResponse = {
   shows: Show[];
   stale: boolean;
+  staleReason: string | null;
   cacheAvailable: boolean;
   lastUpdated: string | null;
   health: UpstreamLineupHealth | null;

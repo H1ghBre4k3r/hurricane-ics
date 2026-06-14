@@ -19,6 +19,7 @@ const DEFAULT_MARKER_ALLOWLIST = [
   "m0132_lineupv2__stage",
   "m0132_lineupv2__category",
 ];
+const DEFAULT_IMAGE_URL = "/fileadmin/placeholder-image.jpg";
 
 function diff_minutes(dt2: Date, dt1: Date) {
   const diff = (dt2.getTime() - dt1.getTime()) / 1000 / 60;
@@ -159,12 +160,33 @@ const warnMissingMarker = (marker: string): LineupParseWarning => ({
 
 const warnInvalidShow = (artist: string, reason: string): LineupParseWarning => ({
   code: "invalid",
-  message: `Skipping show${artist ? ` ${artist}` : ""}: ${reason}`,
+  message: `${artist ? `${artist}:` : "Show:"} ${reason}`,
 });
 
 const parseIntOrZero = (value: string): number => {
   const parsed = parseInt(value, 10);
   return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const withFallback = (
+  value: string,
+  fallback: string,
+  artist: string,
+  field: string,
+): string => {
+  if (value) {
+    return value;
+  }
+
+  console.warn(
+    JSON.stringify({
+      event: "lineup-show-fallback",
+      artist,
+      field,
+    }),
+  );
+
+  return fallback;
 };
 
 export const parseFestivalPlanWithDiagnostics = (
@@ -233,49 +255,45 @@ export const parseFestivalPlanWithDiagnostics = (
       const image = extractImage(showHtml);
       const detailUrl = extractAttribute(attributes, "href");
 
-      if (!artistName) {
-        warnings.push(warnInvalidShow("unknown", "artist name missing"));
-        return;
-      }
+      const artist = withFallback(artistName, "Unknown Artist", "unknown", "artist");
+      const stage = withFallback(stageName, "Unknown Stage", artist, "stage");
+      const category = withFallback(
+        categoryName,
+        "Unknown Category",
+        artist,
+        "category",
+      );
+      const resolvedImage = withFallback(image, DEFAULT_IMAGE_URL, artist, "image");
+      const resolvedDetailUrl = withFallback(
+        detailUrl,
+        "/line-up/",
+        artist,
+        "details_url",
+      );
 
-      if (!stageName) {
-        warnings.push(warnInvalidShow(artistName, "stage missing"));
-        return;
-      }
-
-      if (!categoryName) {
-        warnings.push(warnInvalidShow(artistName, "category missing"));
-        return;
-      }
-
-      if (!detailUrl) {
-        warnings.push(warnInvalidShow(artistName, "details URL missing"));
-        return;
-      }
-
-      if (!image) {
-        warnings.push(warnInvalidShow(artistName, "image missing"));
+      if (!artistName || !stageName || !categoryName || !image || !detailUrl) {
+        warnings.push(warnInvalidShow(artist, "fallback fields were used"));
       }
 
       shows.push({
         category: {
           id: parseIntOrZero(extractAttribute(attributes, "data-category")),
-          name: categoryName,
+          name: category,
         },
         stage: {
           id: parseIntOrZero(extractAttribute(attributes, "data-stage")),
-          name: stageName,
+          name: stage,
         },
         date_timestamp: `${dateStart}${timeMatch[1].replace(":", "")}`,
         date_start: dateStart,
         time_start: timeMatch[1],
         time_end: timeMatch[2],
         artist: {
-          name: artistName,
+          name: artist,
           description: "",
-          image,
-          details_url: detailUrl,
-          url: detailUrl,
+          image: resolvedImage,
+          details_url: resolvedDetailUrl,
+          url: resolvedDetailUrl,
         },
         teasertype: 0,
       });
@@ -321,6 +339,7 @@ export const fetchFestivalFactory = () => {
   let lastSuccessfulFetch: Date | null = null;
   let lastAttemptedFetch: Date | null = null;
   let lastError: string | null = null;
+  let staleReason: string | null = null;
   let stale = false;
   let health: UpstreamLineupHealth | null = null;
   const markerAllowlist = getUpstreamMarkerAllowlist();
@@ -349,7 +368,7 @@ export const fetchFestivalFactory = () => {
         logLineupWarnings(warnings);
 
         if (!festival.shows.length) {
-          throw new Error(`No shows found while parsing ${LINEUP_URL}`);
+          throw new Error(`No valid shows found while parsing ${LINEUP_URL}`);
         }
 
         cache = festival;
@@ -359,13 +378,16 @@ export const fetchFestivalFactory = () => {
         lastError = null;
         health = {
           url: LINEUP_URL,
+          lineupTimestamp: new Date().toISOString(),
           sourceMarker: hashLineup(raw),
           etag: response.headers.get("etag"),
           lastModified: response.headers.get("last-modified"),
+          parsedShowCount: festival.shows.length,
           requiredMarkers: usedMarkerAllowlist,
           missingMarkers,
           parseWarnings: warnings,
         };
+        staleReason = null;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(
@@ -376,6 +398,7 @@ export const fetchFestivalFactory = () => {
           }),
         );
         lastError = message;
+        staleReason = message;
         stale = true;
 
         if (cache === null) {
@@ -392,6 +415,7 @@ export const fetchFestivalFactory = () => {
   fetchFestival.getStatus = (): FestivalFetchStatus => ({
     cacheAvailable: cache !== null,
     stale,
+    staleReason,
     lastSuccessfulFetch: lastSuccessfulFetch?.toISOString() || null,
     lastAttemptedFetch: lastAttemptedFetch?.toISOString() || null,
     showCount: cache?.shows.length || 0,

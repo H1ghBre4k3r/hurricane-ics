@@ -161,6 +161,7 @@ type HealthBannerInfo = {
   stale: boolean;
   cacheAvailable: boolean;
   lastUpdated: string | null;
+  staleReason: string | null;
   health: UpstreamLineupHealth | null;
 };
 
@@ -173,6 +174,7 @@ const App = () => {
     stale: false,
     cacheAvailable: false,
     lastUpdated: null,
+    staleReason: null,
     health: null,
   });
   const [selectedArtistsRequestId, setSelectedArtistsRequestId] = useState(0);
@@ -243,6 +245,7 @@ const App = () => {
       setHealth({
         stale: Boolean(payload.stale),
         cacheAvailable: Boolean(payload.cacheAvailable),
+        staleReason: payload.staleReason || null,
         lastUpdated: payload.lastUpdated || null,
         health: payload.health || null,
       });
@@ -511,7 +514,9 @@ const App = () => {
       return {
         kind: "warning",
         title: "Lineup data is stale",
-        message: `Using cached data from ${formatLastUpdated(health.lastUpdated)}. Tap retry once the source is reachable again.`,
+        message: `Using cached data from ${formatLastUpdated(
+          health.lastUpdated,
+        )}. ${health.staleReason || "Refresh when source is available."}`,
       };
     }
 

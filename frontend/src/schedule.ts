@@ -174,7 +174,7 @@ export const deduplicateShowsByArtist = (shows: Show[]): Show[] => {
   const grouped = new Map<string, Show[]>();
 
   for (const show of shows) {
-    const key = show.artist.name;
+    const key = `${show.artist.name}|${show.date_start}`;
     const existing = grouped.get(key);
     if (!existing) {
       grouped.set(key, [show]);

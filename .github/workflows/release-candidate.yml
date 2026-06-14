@@ -65,6 +65,23 @@ jobs:
               if "lockfileVersion" not in data:
                   print(f"{path} missing lockfileVersion", file=sys.stderr)
                   sys.exit(1)
+
+          def check_lock_consistency(pkg_path, lock_path):
+              manifest = json.loads(pathlib.Path(pkg_path).read_text())
+              lock = json.loads(pathlib.Path(lock_path).read_text())
+              root_deps = set((manifest.get("dependencies") or {}).keys())
+              root_dev_deps = set((manifest.get("devDependencies") or {}).keys())
+              lock_packages = lock.get("packages", {})
+              root_lock = lock_packages.get("", {})
+              lock_deps = set((root_lock.get("dependencies") or {}).keys()) | set((root_lock.get("devDependencies") or {}).keys())
+
+              missing = sorted((root_deps | root_dev_deps) - lock_deps)
+              if missing:
+                  print(f"{lock_path} is missing lock entries: {', '.join(missing)}", file=sys.stderr)
+                  sys.exit(1)
+
+          check_lock_consistency("package.json", "package-lock.json")
+          check_lock_consistency("frontend/package.json", "frontend/package-lock.json")
           PY
 
       - name: Archive build artifacts

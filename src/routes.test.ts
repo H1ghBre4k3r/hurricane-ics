@@ -82,6 +82,7 @@ const festival: FestivalPlan = {
 const status: FestivalFetchStatus = {
   cacheAvailable: true,
   stale: false,
+  staleReason: null,
   lastSuccessfulFetch: "2026-06-13T12:00:00.000Z",
   lastAttemptedFetch: "2026-06-13T12:00:00.000Z",
   showCount: 4,
@@ -90,8 +91,10 @@ const status: FestivalFetchStatus = {
   health: {
     url: "https://hurricane.de/line-up/",
     sourceMarker: "abc123",
+    lineupTimestamp: "2026-06-13T12:00:00.000Z",
     etag: null,
     lastModified: null,
+    parsedShowCount: 4,
     requiredMarkers: [
       "m0132_lineupv2",
       "m0132_lineupv2__day",
@@ -173,6 +176,7 @@ test("api handlers expose concerts and scrape status", async () => {
 
 test("api concerts reports stale-cache responses", async () => {
   const staleStatus = { ...status, stale: true };
+  staleStatus.staleReason = "upstream temporary issue";
   const fetchFestivalWithStale = Object.assign(fetchFestival, {
     getStatus: () => staleStatus,
   }) as {
@@ -183,6 +187,10 @@ test("api concerts reports stale-cache responses", async () => {
   const concertsRes = makeResponse();
   await handleGetConcertsApiFactory(fetchFestivalWithStale)({} as Request, concertsRes);
   assert.equal((concertsRes.jsonBody as { stale: boolean }).stale, true);
+  assert.equal(
+    (concertsRes.jsonBody as { staleReason: string | null }).staleReason,
+    staleStatus.staleReason,
+  );
   assert.equal(
     (concertsRes.jsonBody as { cacheAvailable: boolean }).cacheAvailable,
     true,
