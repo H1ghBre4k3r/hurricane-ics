@@ -1229,80 +1229,97 @@ const App = () => {
 
         <section>
           <h3>1. Verantwortlicher</h3>
-          <p>Verantwortlich für diese Website ist:</p>
+          <p>Verantwortlich für die Datenverarbeitung auf dieser Website ist:</p>
           <p>Louis Meyer<br />louis@lome.dev</p>
         </section>
 
         <section>
-          <h3>2. Bereitstellung der Website</h3>
+          <h3>2. Hosting und Bereitstellung der Website</h3>
+          <p>Diese Website wird auf einem Server bei der Hetzner Online GmbH in Deutschland betrieben.</p>
           <p>
-            Beim Aufruf dieser Website verarbeitet der Webserver technisch
-            erforderliche Informationen, um die Website und die bereitgestellten
-            Kalenderfeeds auszuliefern. Hierzu können insbesondere die IP-Adresse,
-            Datum und Uhrzeit des Zugriffs, aufgerufene Ressourcen sowie
-            Informationen zum verwendeten Browser gehören.
+            Beim Aufruf der Website werden technisch erforderliche Informationen
+            verarbeitet, um die Website und die bereitgestellten Kalenderfeeds
+            auszuliefern. Hierzu können insbesondere folgende Daten gehören:
           </p>
+          <ul>
+            <li>IP-Adresse</li>
+            <li>Datum und Uhrzeit des Zugriffs</li>
+            <li>aufgerufene URL bzw. Ressource</li>
+            <li>HTTP-Statuscode</li>
+            <li>Informationen zum verwendeten Browser und Betriebssystem</li>
+          </ul>
+          <p>Die Verarbeitung erfolgt zur Bereitstellung, Sicherheit und Stabilität der Website.</p>
           <p>
-            Die Verarbeitung erfolgt zur Bereitstellung und zum sicheren Betrieb
-            der Website.
-          </p>
-        </section>
-
-        <section>
-          <h3>3. Individuelle Kalenderfeeds</h3>
-          <p>
-            Diese Website ermöglicht die Erstellung individueller Kalenderfeeds für
-            Festivalbesucher.
-          </p>
-          <p>
-            Die Auswahl der gewünschten Acts wird nicht dauerhaft auf dem Server
-            gespeichert. Stattdessen wird die Auswahl in der Feed-URL kodiert und bei
-            Abruf des Kalenderfeeds verarbeitet, um die entsprechenden Kalendereinträge
-            zu erzeugen.
-          </p>
-          <p>
-            Die Feed-URL sollte wie ein persönlicher Link behandelt und nicht
-            öffentlich weitergegeben werden.
+            Rechtsgrundlage für die Verarbeitung ist Art. 6 Abs. 1 lit. f DSGVO
+            (berechtigtes Interesse an einem sicheren und funktionsfähigen Betrieb
+            der Website).
           </p>
         </section>
 
         <section>
-          <h3>4. Local Storage</h3>
+          <h3>3. Hosting-Dienstleister</h3>
           <p>
-            Zur Verbesserung der Benutzerfreundlichkeit nutzt diese Website den Local
-            Storage des Browsers. Dort können lokal auf dem Endgerät Informationen wie
-            die ausgewählten Acts gespeichert werden.
+            Für das Hosting dieser Website wird die Hetzner Online GmbH, Industriestraße 25, 91710
+            Gunzenhausen, Deutschland, als technischer Infrastruktur-Dienstleister
+            eingesetzt.
           </p>
           <p>
-            Diese Daten verbleiben ausschließlich im Browser des Nutzers und werden
-            nicht an Dritte übermittelt.
-          </p>
-        </section>
-
-        <section>
-          <h3>5. Keine Cookies und kein Tracking</h3>
-          <p>
-            Diese Website verwendet keine Cookies zu Werbe-, Analyse- oder
-            Trackingzwecken.
-          </p>
-          <p>
-            Es werden keine Webanalyse-Dienste eingesetzt und keine Nutzerprofile
-            erstellt.
+            Im Rahmen des Hostings können technisch erforderliche Daten verarbeitet werden,
+            soweit dies für den Betrieb der Website notwendig ist.
           </p>
         </section>
 
         <section>
-          <h3>6. Rechte betroffener Personen</h3>
+          <h3>4. Individuelle Kalenderfeeds</h3>
           <p>
-            Betroffene Personen haben im Rahmen der gesetzlichen Vorschriften insbesondere
-            das Recht auf Auskunft über die Verarbeitung ihrer personenbezogenen Daten,
-            auf Berichtigung, Löschung, Einschränkung der Verarbeitung sowie auf
-            Beschwerde bei einer Datenschutzaufsichtsbehörde.
+            Diese Website ermöglicht die Erstellung individueller Kalenderfeeds für Besucher
+            des Hurricane Festivals.
+          </p>
+          <p>
+            Die Auswahl der gewünschten Acts wird nicht dauerhaft auf dem Server gespeichert.
+            Stattdessen wird die Auswahl in der Feed-URL kodiert und bei Abruf des
+            Kalenderfeeds verarbeitet, um die entsprechenden Kalendereinträge zu erzeugen.
+          </p>
+          <p>
+            Die Feed-URL sollte wie ein persönlicher Link behandelt und nicht öffentlich
+            weitergegeben werden.
           </p>
         </section>
 
         <section>
-          <h3>7. Kontakt</h3>
+          <h3>5. Local Storage</h3>
+          <p>
+            Zur Verbesserung der Benutzerfreundlichkeit verwendet diese Website den Local
+            Storage des Browsers.
+          </p>
+          <p>
+            Dabei können Informationen wie ausgewählte Acts oder Einstellungen lokal auf
+            dem Endgerät gespeichert werden. Diese Daten verbleiben ausschließlich im
+            Browser des Nutzers und werden nicht an Dritte übermittelt.
+          </p>
+        </section>
+
+        <section>
+          <h3>6. Keine Cookies und kein Tracking</h3>
+          <p>Diese Website verwendet keine Cookies zu Analyse-, Werbe- oder Trackingzwecken.</p>
+          <p>Es werden keine Webanalyse-Dienste eingesetzt und keine Nutzerprofile erstellt.</p>
+        </section>
+
+        <section>
+          <h3>7. Rechte betroffener Personen</h3>
+          <p>Betroffene Personen haben im Rahmen der geltenden Datenschutzgesetze insbesondere folgende Rechte:</p>
+          <ul>
+            <li>Recht auf Auskunft über die verarbeiteten personenbezogenen Daten</li>
+            <li>Recht auf Berichtigung unrichtiger Daten</li>
+            <li>Recht auf Löschung personenbezogener Daten</li>
+            <li>Recht auf Einschränkung der Verarbeitung</li>
+            <li>Recht auf Widerspruch gegen die Verarbeitung</li>
+            <li>Recht auf Beschwerde bei einer zuständigen Datenschutzaufsichtsbehörde</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>8. Kontakt</h3>
           <p>
             Bei Fragen zum Datenschutz kann der Verantwortliche unter der oben genannten
             E-Mail-Adresse kontaktiert werden.
