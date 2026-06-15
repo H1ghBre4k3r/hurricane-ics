@@ -40,9 +40,9 @@ If the upstream scrape is temporarily down:
    - If present, `staleReason` explains why the cache is being used.
 3. If both cache and upstream fail, use the deploy branch history or re-run workflow after confirming source availability.
 4. Verify by requesting:
-   - `curl https://hurricane.lome.dev/api/concerts`
-   - `curl https://hurricane.lome.dev/api/status`
-   - `curl -I https://hurricane.lome.dev/ics`
+   - `curl https://<your-domain>/api/concerts`
+   - `curl https://<your-domain>/api/status`
+   - `curl -I https://<your-domain>/ics`
 5. For a hard cleanup, manually trigger the workflow with `workflow_dispatch` to force a fresh scrape attempt.
 
 ## Delivery and release manager checklist

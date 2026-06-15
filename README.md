@@ -2,17 +2,17 @@
 
 ICS provider and schedule picker for Hurricane Festival.
 
-The deployed app is available at <https://hurricane.lome.dev>. It scrapes the
+The deployed app is available at `https://<your-domain>`. It scrapes the
 current Hurricane lineup page, lets visitors select artists, and exposes calendar
 feeds for the full lineup, individual days, or selected artists.
 
 ## Calendar feeds
 
-- Full lineup: <https://hurricane.lome.dev/ics>
-- Legacy full-lineup alias: <https://hurricane.lome.dev/ics/2023>
-- Day feeds: `https://hurricane.lome.dev/ics/day/thursday`, `/friday`, `/saturday`, `/sunday`
-- Selected artists: `https://hurricane.lome.dev/ics/artist/?q=<base64-json-artist-array>`
-- Shared schedule selection feed: `https://hurricane.lome.dev/ics/schedule/<schedule-id>`
+- Full lineup: <https://<your-domain>/ics>
+- Legacy full-lineup alias: <https://<your-domain>/ics/2023>
+- Day feeds: `https://<your-domain>/ics/day/thursday`, `/friday`, `/saturday`, `/sunday`
+- Selected artists: `https://<your-domain>/ics/artist/?q=<base64-json-artist-array>`
+- Shared schedule selection feed: `https://<your-domain>/ics/schedule/<schedule-id>`
 
 The frontend generates `webcal://` subscribe links and copyable `https://` links
 for selected artists.
@@ -95,10 +95,10 @@ On `main`, `.github/workflows/Docker.yml` updates the pinned manifest and force-
 the `deploy/k3s-manifests` branch on each run.
 
 Manual auth smoke checks:
-- `curl -i https://hurricane.lome.dev/api/auth/me`
-- `curl -i -X POST https://hurricane.lome.dev/api/auth/register` returns 503 while login/registration are disabled.
-- `curl -i -X POST https://hurricane.lome.dev/api/auth/login` returns 503 while login/registration are disabled.
-- `curl -i -X POST https://hurricane.lome.dev/api/me/schedules -H "Content-Type: application/json" -H "X-CSRF-Token: <value-from-cookie>" -d '{"artists":["JULI"]}' --cookie "XSRF-TOKEN=<value-from-cookie>"`
+- `curl -i https://<your-domain>/api/auth/me`
+- `curl -i -X POST https://<your-domain>/api/auth/register` returns 503 while login/registration are disabled.
+- `curl -i -X POST https://<your-domain>/api/auth/login` returns 503 while login/registration are disabled.
+- `curl -i -X POST https://<your-domain>/api/me/schedules -H "Content-Type: application/json" -H "X-CSRF-Token: <value-from-cookie>" -d '{"artists":["JULI"]}' --cookie "XSRF-TOKEN=<value-from-cookie>"`
 
 ## CI and release checks
 
@@ -122,10 +122,10 @@ Manual auth smoke checks:
 
 ## k3s troubleshooting
 
-1. Check process health: `curl https://hurricane.lome.dev/healthz`
-2. Check scraper/cache status: `curl https://hurricane.lome.dev/api/status`
-3. Check parsed concerts: `curl https://hurricane.lome.dev/api/concerts`
-4. Check calendar output: `curl https://hurricane.lome.dev/ics`
+1. Check process health: `curl https://<your-domain>/healthz`
+2. Check scraper/cache status: `curl https://<your-domain>/api/status`
+3. Check parsed concerts: `curl https://<your-domain>/api/concerts`
+4. Check calendar output: `curl https://<your-domain>/ics`
 
 If `/healthz` is healthy but `showCount` is `0` or `lastError` is set, the app is
 running but the upstream lineup fetch or parser likely needs attention.
