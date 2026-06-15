@@ -10,6 +10,9 @@ import {
 } from "./types";
 
 const LINEUP_URL = "https://hurricane.de/line-up/";
+const LINEUP_USER_AGENT =
+  process.env.LINEUP_USER_AGENT ||
+  "hurricane-ics-scraper/1.0 (+https://github.com/H1ghBre4k3r/hurricane-ics)";
 const DEFAULT_MARKER_ALLOWLIST = [
   "m0132_lineupv2",
   "m0132_lineupv2__day",
@@ -350,7 +353,11 @@ export const fetchFestivalFactory = () => {
       lastAttemptedFetch = now;
 
       try {
-        const response = await fetch(LINEUP_URL);
+        const response = await fetch(LINEUP_URL, {
+          headers: {
+            "User-Agent": LINEUP_USER_AGENT,
+          },
+        });
         if (!response.ok) {
           throw new Error(`Failed to fetch ${LINEUP_URL}: ${response.status}`);
         }

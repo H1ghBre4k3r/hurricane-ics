@@ -788,8 +788,7 @@ const App = () => {
               <h1>{festivalTitle}</h1>
               <p className="hero__subtitle">{dateRange}</p>
               <p className="hero__disclaimer">
-                Independent fan-made calendar tool for Hurricane Festival attendees.
-                Not affiliated with Hurricane Festival or its organizers.
+                Unofficial fan project. Not affiliated with the festival organizers.
               </p>
             </div>
             <div className="hero__summary" aria-live="polite">
@@ -1120,6 +1119,13 @@ const App = () => {
       </div>
 
       <footer className="site-footer" aria-label="Footer">
+        <p className="site-footer__disclaimer">
+          Unofficial fan project. This is a purely private, non-commercial hobby
+          project and is not affiliated with FKP Scorpio Konzertproduktionen GmbH
+          or the Hurricane Festival. All trademarks, logos, and official content
+          belong to their respective owners. The official timetable can be found at
+          hurricane.de.
+        </p>
         <a href="/privacy.html" className="site-footer__link">
           Datenschutzerklärung
         </a>

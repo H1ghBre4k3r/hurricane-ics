@@ -933,6 +933,15 @@ a {
   box-shadow: 0 14px 40px rgba(24, 43, 39, 0.08);
   margin-top: 34px;
   padding: 28px;
+  display: grid;
+  gap: 12px;
+}
+
+.site-footer__disclaimer {
+  color: #cfdfd8;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  margin: 0;
 }
 
 .site-footer__link {
