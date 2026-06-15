@@ -913,21 +913,6 @@ const App = () => {
         </section>
       )}
 
-      <section className="auth-panel">
-        <div className="auth-panel__header">
-          <p className="section-kicker">Account</p>
-          <h3>Authentication disabled</h3>
-        </div>
-
-        <p className="auth-panel__status" role="status">
-          Login and registration are temporarily disabled while compliance review is in
-          progress.
-        </p>
-        <p className="auth-panel__status">
-          Anonymous sharing remains fully available with links.
-        </p>
-      </section>
-
       <section className="schedule" aria-label="Festival schedule">
         {fetchState === "loading" && (
           <div className="state-panel">
