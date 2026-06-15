@@ -63,6 +63,8 @@ export type PersistedUser = {
   email: string;
   passwordHash: string;
   passwordSalt: string;
+  sessionVersion: number;
+  tokenIssuedAt: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -108,6 +110,12 @@ export type AuthStore = {
   createUser: (email: string, passwordHash: string, passwordSalt: string) => Promise<PersistedUser>;
   getUserByEmail: (email: string) => Promise<PersistedUser | null>;
   getUserById: (id: string) => Promise<PersistedUser | null>;
+  revokeAllSessions: (userId: string) => Promise<{ sessionVersion: number; tokenIssuedAt: number }>;
+  updatePassword: (
+    userId: string,
+    passwordHash: string,
+    passwordSalt: string,
+  ) => Promise<PersistedUser | null>;
 };
 
 export type UserScheduleStore = {

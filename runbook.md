@@ -63,3 +63,34 @@ Before promoting from release candidate to `main`, confirm:
 5. `k8s/hurricane-ics.yml` is pinned to the intended SHA image tag in `deploy/k3s-manifests`.
 6. Confirm `Docker.yml` is the only workflow that mutates `deploy/k3s-manifests` and writes image pins.
 7. Confirm release candidate artifacts were only used for inspection (no manifest/image side effects) on non-main verification.
+
+## Runtime and security checks
+
+Auth/session assumptions for production:
+
+- Reverse proxy must enforce HTTPS for `Secure` cookies to be accepted by browsers.
+- Configure required secrets:
+  - `AUTH_SECRET`
+  - `AUTH_CSRF_SECRET`
+- Configure cookie policy per environment:
+  - `AUTH_COOKIE_SECURE=1`
+  - `AUTH_COOKIE_SAMESITE=Strict` (or `Lax` if client behavior requires it)
+- Keep production session TTLs and rate limits intentionally tight:
+  - `SESSION_TTL_SEC`
+  - `SESSION_REFRESH_WINDOW_SEC`
+  - `AUTH_RATE_LIMIT_ENABLED`
+  - `AUTH_RATE_LIMIT_WINDOW_MS`
+  - `AUTH_RATE_LIMIT_MAX_ATTEMPTS`
+
+Before merging security-sensitive PRs, confirm a quick manual check:
+
+1. `curl -i http://<host>/api/auth/me` returns 401 and sets `XSRF-TOKEN` when no auth.
+2. POST `/api/auth/register` with matching `X-CSRF-Token` works for a valid body.
+3. POST `/api/auth/login` with wrong credentials returns a generic 401 error.
+4. POST `/api/auth/logout-all` rotates session state and clears the session cookie.
+
+## Release checklist for merge gates
+
+- PR merge requires `PR.yml` and branch protection.
+- `main` publishing remains `Docker.yml`-only for manifest pin updates.
+- `release-candidate` outputs remain review artifacts (`build`, `frontend/build`) and are never used as a publish signal.

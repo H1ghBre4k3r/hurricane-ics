@@ -44,6 +44,18 @@ for selected artists.
   - `missingMarkers`
   - `parseWarnings`
 - `GET /healthz` returns `200` when the Express process is running.
+- Auth routes:
+  - `POST /api/auth/register` creates an account and issues an `HttpOnly` session cookie.
+  - `POST /api/auth/login` authenticates and issues an `HttpOnly` session cookie.
+  - `POST /api/auth/logout` clears the session cookie.
+  - `GET /api/auth/me` returns the current user when authenticated.
+  - `GET /api/auth/sessions` returns active session metadata.
+  - `POST /api/auth/logout-all` rotates server-side session version and clears auth cookie.
+  - `POST /api/auth/change-password` updates password (requires auth).
+
+CSRF behavior:
+- The API issues a readable `XSRF-TOKEN` cookie on API responses.
+- Mutating endpoints require `X-CSRF-Token` header to match `XSRF-TOKEN`.
 
 ## Development
 
@@ -67,9 +79,26 @@ The backend listens on port `3000` and serves the built React frontend from
 - Optional scrape hardening config:
   - `LINEUP_MARKER_ALLOWLIST` (comma-separated class markers that should remain present).
   - `DEBUG_PARSER` (`1` to emit parser diagnostics to logs during startup fetch windows).
+- Auth hardening config:
+  - `AUTH_SECRET` (required in production)
+  - `AUTH_CSRF_SECRET` (required in production)
+- `AUTH_COOKIE_SECURE` (`1`/`true`/`yes` when HTTPS is enabled)
+- `AUTH_COOKIE_SAMESITE` (`Strict` recommended, `Lax` when needed)
+- `SESSION_TTL_SEC` (default `7d`)
+- `SESSION_REFRESH_WINDOW_SEC` (refresh session token near expiry)
+- `AUTH_RATE_LIMIT_ENABLED` (`1`/`true`/`yes` to enforce)
+- `AUTH_RATE_LIMIT_WINDOW_MS`
+- `AUTH_RATE_LIMIT_MAX_ATTEMPTS`
+- `AUTH_RATE_LIMIT_MAX_ATTEMPTS` defaults to `10` in production.
 
 On `main`, `.github/workflows/Docker.yml` updates the pinned manifest and force-updates
 the `deploy/k3s-manifests` branch on each run.
+
+Manual auth smoke checks:
+- `curl -i https://hurricane.lome.dev/api/auth/me`
+- `curl -i -X POST https://hurricane.lome.dev/api/auth/register -H "Content-Type: application/json" -H "X-CSRF-Token: <value-from-cookie>" -d '{"email":"me@example.com","password":"pass12345"}'`
+- `curl -i -X POST https://hurricane.lome.dev/api/auth/login -H "Content-Type: application/json" -H "X-CSRF-Token: <value-from-cookie>" -d '{"email":"me@example.com","password":"pass12345"}'`
+- `curl -i -X POST https://hurricane.lome.dev/api/me/schedules -H "Content-Type: application/json" -H "X-CSRF-Token: <value-from-cookie>" -d '{"artists":["JULI"]}' --cookie "XSRF-TOKEN=<value-from-cookie>"`
 
 ## CI and release checks
 

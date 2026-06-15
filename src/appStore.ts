@@ -9,6 +9,7 @@ import {
 } from "./types";
 
 const nowIso = (): string => new Date().toISOString();
+const nowSeconds = (): number => Math.floor(Date.now() / 1000);
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 
@@ -31,11 +32,15 @@ class InMemoryAuthStore implements AuthStore {
   ): Promise<PersistedUser> {
     const email = normalizeEmail(rawEmail);
     const now = nowIso();
+    const nowSec = nowSeconds();
+
     const user: PersistedUser = {
       id: makeId(),
       email,
       passwordHash,
       passwordSalt,
+      sessionVersion: 1,
+      tokenIssuedAt: nowSec,
       createdAt: now,
       updatedAt: now,
     };
@@ -43,7 +48,7 @@ class InMemoryAuthStore implements AuthStore {
     this.usersByEmail.set(email, user);
     this.usersById.set(user.id, user);
 
-    return user;
+    return { ...user };
   }
 
   async getUserByEmail(rawEmail: string): Promise<PersistedUser | null> {
@@ -51,7 +56,62 @@ class InMemoryAuthStore implements AuthStore {
   }
 
   async getUserById(userId: string): Promise<PersistedUser | null> {
-    return this.usersById.get(userId) || null;
+    const user = this.usersById.get(userId);
+    if (!user) {
+      return null;
+    }
+
+    return { ...user };
+  }
+
+  async revokeAllSessions(
+    userId: string,
+  ): Promise<{ sessionVersion: number; tokenIssuedAt: number }> {
+    const existing = this.usersById.get(userId);
+    if (!existing) {
+      return {
+        sessionVersion: 0,
+        tokenIssuedAt: nowSeconds(),
+      };
+    }
+
+    const updated = {
+      ...existing,
+      sessionVersion: existing.sessionVersion + 1,
+      tokenIssuedAt: nowSeconds(),
+      updatedAt: nowIso(),
+    };
+
+    this.usersById.set(userId, updated);
+    this.usersByEmail.set(updated.email, updated);
+
+    return {
+      sessionVersion: updated.sessionVersion,
+      tokenIssuedAt: updated.tokenIssuedAt,
+    };
+  }
+
+  async updatePassword(
+    userId: string,
+    passwordHash: string,
+    passwordSalt: string,
+  ): Promise<PersistedUser | null> {
+    const existing = this.usersById.get(userId);
+    if (!existing) {
+      return null;
+    }
+
+    const updated = {
+      ...existing,
+      passwordHash,
+      passwordSalt,
+      updatedAt: nowIso(),
+    };
+
+    this.usersById.set(userId, updated);
+    this.usersByEmail.set(updated.email, updated);
+
+    return { ...updated };
   }
 }
 
@@ -81,7 +141,7 @@ class InMemoryUserScheduleStore implements UserScheduleStore {
     setForUser.add(schedule.id);
     this.schedulesByUser.set(userId, setForUser);
 
-    return schedule;
+    return { ...schedule };
   }
 
   async list(userId: string): Promise<UserSchedule[]> {

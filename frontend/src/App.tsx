@@ -49,6 +49,33 @@ const parseViewFromSearch = (search: string): ScheduleView => {
   return "lineup";
 };
 
+const getCsrfToken = (): string | null => {
+  const raw = document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith("XSRF-TOKEN="));
+
+  if (!raw) {
+    return null;
+  }
+
+  return decodeURIComponent(raw.replace("XSRF-TOKEN=", ""));
+};
+
+const withCsrfHeader = (
+  headers: Record<string, string> = {},
+): Record<string, string> => {
+  const token = getCsrfToken();
+  if (!token) {
+    return headers;
+  }
+
+  return {
+    ...headers,
+    "X-CSRF-Token": token,
+  };
+};
+
 const updateViewInQuery = (view: ScheduleView) => {
   const params = new URLSearchParams(window.location.search);
   if (view === "lineup") {
@@ -417,9 +444,9 @@ const App = () => {
         authMode === "sign-in" ? "/api/auth/login" : "/api/auth/register",
         {
           method: "POST",
-          headers: {
+          headers: withCsrfHeader({
             "Content-Type": "application/json",
-          },
+          }),
           body: JSON.stringify({
             email: authEmail.trim(),
             password: authPassword,
@@ -448,7 +475,10 @@ const App = () => {
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: withCsrfHeader(),
+      });
     } catch (error) {
       console.error(error);
     } finally {
@@ -469,9 +499,9 @@ const App = () => {
     try {
       const response = await fetch("/api/me/schedules", {
         method: "POST",
-        headers: {
+        headers: withCsrfHeader({
           "Content-Type": "application/json",
-        },
+        }),
         body: JSON.stringify({
           artists: selectedArtists,
           name,
@@ -506,6 +536,7 @@ const App = () => {
     try {
       const response = await fetch(`/api/me/schedules/${encodeURIComponent(id)}`, {
         method: "DELETE",
+        headers: withCsrfHeader(),
       });
 
       if (!response.ok) {

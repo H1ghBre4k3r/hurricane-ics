@@ -20,14 +20,24 @@ import {
 } from "./routes/api/schedule.api";
 import { handleGetScheduleIcsFactory } from "./routes/ics/schedule.ics";
 import { createInMemoryAppStore } from "./appStore";
-import { handleRegisterFactory, handleLoginFactory } from "./routes/api/auth.api";
-import { handleMeFactory } from "./routes/api/auth.api";
+import {
+  handleRegisterFactory,
+  handleLoginFactory,
+  handleMeFactory,
+  handleLogoutAllFactory,
+  handleSessionsFactory,
+  handleChangePasswordFactory,
+} from "./routes/api/auth.api";
 import {
   handleCreateMyScheduleFactory,
   handleDeleteMyScheduleFactory,
   handleListMySchedulesFactory,
 } from "./routes/api/me-schedules.api";
 import { getShowStart } from "./utils";
+import {
+  createAuthMiddleware,
+  requireCsrfProtection,
+} from "./auth";
 
 const festival: FestivalPlan = {
   shows: [
@@ -504,6 +514,104 @@ test("auth register/login API emits session metadata", async () => {
   assert.ok(loginResponse.headers["set-cookie"]);
 });
 
+test("auth routes expose session metadata and enforce password change flow", async () => {
+  const registerResponse = makeResponse();
+  await handleRegisterFactory(authStore)(
+    { body: { email: "change@example.com", password: "pass12345" } } as Request,
+    registerResponse,
+  );
+
+  const registered = registerResponse.jsonBody as {
+    id: string;
+    email: string;
+    createdAt: string;
+  };
+
+  const authUser = {
+    id: registered.id,
+    email: registered.email,
+    createdAt: registered.createdAt,
+  };
+
+  const sessionsResponse = makeResponse();
+  await handleSessionsFactory()(
+    { authUser } as unknown as Request,
+    sessionsResponse,
+  );
+  assert.equal(sessionsResponse.statusCode, 200);
+  assert.equal((sessionsResponse.jsonBody as { userId: string }).userId, registered.id);
+
+  const weakPasswordResponse = makeResponse();
+  await handleChangePasswordFactory(authStore)(
+    {
+      authUser,
+      body: {
+        currentPassword: "wrong",
+        newPassword: "short",
+      },
+    } as unknown as Request,
+    weakPasswordResponse,
+  );
+  assert.equal(weakPasswordResponse.statusCode, 401);
+
+  const strongPasswordResponse = makeResponse();
+  await handleChangePasswordFactory(authStore)(
+    {
+      authUser,
+      body: {
+        currentPassword: "pass12345",
+        newPassword: "newpass123",
+      },
+    } as unknown as Request,
+    strongPasswordResponse,
+  );
+  assert.equal(strongPasswordResponse.statusCode, 200);
+
+  const oldLoginResponse = makeResponse();
+  await handleLoginFactory(authStore)(
+    {
+      body: {
+        email: "change@example.com",
+        password: "pass12345",
+      },
+    } as Request,
+    oldLoginResponse,
+  );
+  assert.equal(oldLoginResponse.statusCode, 401);
+
+  const newLoginResponse = makeResponse();
+  await handleLoginFactory(authStore)(
+    {
+      body: {
+        email: "change@example.com",
+        password: "newpass123",
+      },
+    } as Request,
+    newLoginResponse,
+  );
+  assert.equal(newLoginResponse.statusCode, 200);
+
+  const logoutAllResponse = makeResponse();
+  await handleLogoutAllFactory(authStore)(
+    {
+      authUser,
+      cookies: {
+        "hurricane_ics_session": "old-token",
+      },
+    } as unknown as Request,
+    logoutAllResponse,
+  );
+  assert.equal(logoutAllResponse.statusCode, 200);
+  const logoutBody = logoutAllResponse.jsonBody as {
+    ok: boolean;
+    sessionVersion: number;
+    tokenIssuedAt: number;
+  };
+  assert.equal(logoutBody.ok, true);
+  assert.ok(logoutBody.sessionVersion > 0);
+  assert.ok(logoutBody.tokenIssuedAt > 0);
+});
+
 test("auth register rejects weak credentials", async () => {
   const response = makeResponse();
   await handleRegisterFactory(authStore)(
@@ -581,4 +689,67 @@ test("user schedule routes and public resolver support persisted IDs", async () 
     removedResponse,
   );
   assert.equal(removedResponse.statusCode, 410);
+});
+
+test("auth middleware clears invalid session cookies", async () => {
+  const response = makeResponse();
+  let called = false;
+
+  const middleware = createAuthMiddleware(authStore);
+  await middleware(
+    {
+      headers: {
+        cookie: "hurricane_ics_session=bad-token",
+      },
+    } as Request,
+    response,
+    () => {
+      called = true;
+    },
+  );
+
+  assert.equal(called, true);
+  const setCookie = response.headers["set-cookie"];
+  const cookieLine = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+  assert.ok(typeof cookieLine === "string");
+  assert.match(cookieLine, /hurricane_ics_session=;/);
+  assert.match(cookieLine, /Max-Age=0/);
+  assert.match(cookieLine, /HttpOnly/);
+});
+
+test("CSRF middleware requires a matching request token", () => {
+  const response = makeResponse();
+  let called = false;
+
+  requireCsrfProtection(
+    {
+      headers: {
+        cookie: "XSRF-TOKEN=valid-token",
+      },
+    } as unknown as Request,
+    response,
+    () => {
+      called = true;
+    },
+  );
+
+  assert.equal(response.statusCode, 403);
+  assert.equal(called, false);
+
+  called = false;
+  const allowed = makeResponse();
+  requireCsrfProtection(
+    {
+      headers: {
+        cookie: "XSRF-TOKEN=valid-token",
+        "x-csrf-token": "valid-token",
+      },
+    } as unknown as Request,
+    allowed,
+    () => {
+      called = true;
+    },
+  );
+  assert.equal(allowed.statusCode, 200);
+  assert.equal(called, true);
 });
