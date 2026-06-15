@@ -944,6 +944,14 @@ a {
   text-decoration: none;
 }
 
+.site-footer__link + .site-footer__link {
+  margin-left: 18px;
+}
+
+.site-footer__link--inline {
+  opacity: 0.95;
+}
+
 .site-footer__link:hover,
 .site-footer__link:focus-visible {
   text-decoration: underline;

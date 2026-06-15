@@ -877,14 +877,6 @@ const App = () => {
             >
               Subscribe to full lineup
             </a>
-            <a
-              className="ghost-button ghost-button--light"
-              href={GITHUB_REPO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub
-            </a>
             <button
               className="ghost-button ghost-button--light"
               type="button"
@@ -1212,6 +1204,14 @@ const App = () => {
       <footer className="site-footer" aria-label="Footer">
         <a href="/privacy.html" className="site-footer__link">
           Datenschutzerklärung
+        </a>
+        <a
+          href={GITHUB_REPO_URL}
+          className="site-footer__link site-footer__link--inline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          GitHub
         </a>
       </footer>
     </main>
