@@ -63,8 +63,19 @@ The backend listens on port `3000` and serves the built React frontend from
   - `latest`
   - `sha-<full-commit>`
 - K3s manifests are maintained on `deploy/k3s-manifests` with pinned SHA image tags.
+- Upstream lineup fetch policy (implemented):
+  - Source: `https://hurricane.de/line-up/`.
+  - Respectful request profile:
+    - `User-Agent` must be set on every upstream request.
+    - Request is sent with `LINEUP_USER_AGENT`.
+    - Default UA: `hurricane-ics-scraper/1.0 (+https://github.com/H1ghBre4k3r/hurricane-ics)`.
+    - Effective cache duration: **15 minutes** before a fresh scrape attempt.
+    - On upstream failure, the service serves cached data when available and marks response as stale.
+    - If no cache exists and upstream fails, API returns a hard failure.
+  - This default is intentionally conservative to reduce load on the source and keep data reasonably fresh.
 - Optional scrape hardening config:
   - `LINEUP_MARKER_ALLOWLIST` (comma-separated class markers that should remain present).
+  - `LINEUP_USER_AGENT` (override the scraper User-Agent string).
   - `DEBUG_PARSER` (`1` to emit parser diagnostics to logs during startup fetch windows).
 On `main`, `.github/workflows/Docker.yml` updates the pinned manifest and force-updates
 the `deploy/k3s-manifests` branch on each run.

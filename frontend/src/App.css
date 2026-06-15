@@ -957,6 +957,21 @@ a {
   margin-left: 18px;
 }
 
+@media (max-width: 640px) {
+  .site-footer {
+    padding: 22px;
+  }
+
+  .site-footer__link {
+    display: block;
+  }
+
+  .site-footer__link + .site-footer__link {
+    margin-left: 0;
+    margin-top: 6px;
+  }
+}
+
 .site-footer__link--inline {
   opacity: 0.95;
 }
