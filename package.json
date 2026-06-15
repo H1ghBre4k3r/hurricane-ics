@@ -27,7 +27,7 @@
         "dayjs": "^1.11.21",
         "ical-generator": "^11.0.0",
         "moment": "^2.30.1",
-        "moment-timezone": "^0.6.0",
+        "moment-timezone": "^0.6.2",
         "node-fetch": "^2.6.7",
         "rrule": "^2.8.1"
     }
