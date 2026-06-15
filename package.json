@@ -23,7 +23,7 @@
         "typescript": "^5.9.3"
     },
     "dependencies": {
-        "cors": "^2.8.5",
+        "cors": "^2.8.6",
         "dayjs": "^1.11.21",
         "ical-generator": "^11.0.0",
         "moment": "^2.30.1",
