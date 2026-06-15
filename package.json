@@ -20,7 +20,7 @@
         "@types/node": "^25.9.3",
         "@types/node-fetch": "^2.6.1",
         "express": "^5.2.0",
-        "typescript": "^5.9.3"
+        "typescript": "^6.0.3"
     },
     "dependencies": {
         "cors": "^2.8.5",
