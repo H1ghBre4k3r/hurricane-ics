@@ -64,30 +64,18 @@ Before promoting from release candidate to `main`, confirm:
 6. Confirm `Docker.yml` is the only workflow that mutates `deploy/k3s-manifests` and writes image pins.
 7. Confirm release candidate artifacts were only used for inspection (no manifest/image side effects) on non-main verification.
 
-## Runtime and security checks
+## Runtime and privacy checks
 
-Auth/session assumptions for production:
-
-- Reverse proxy must enforce HTTPS for `Secure` cookies to be accepted by browsers.
-- Configure required secrets:
-  - `AUTH_SECRET`
-  - `AUTH_CSRF_SECRET`
-- Configure cookie policy per environment:
-  - `AUTH_COOKIE_SECURE=1`
-  - `AUTH_COOKIE_SAMESITE=Strict` (or `Lax` if client behavior requires it)
-- Keep production session TTLs and rate limits intentionally tight:
-  - `SESSION_TTL_SEC`
-  - `SESSION_REFRESH_WINDOW_SEC`
-  - `AUTH_RATE_LIMIT_ENABLED`
-  - `AUTH_RATE_LIMIT_WINDOW_MS`
-  - `AUTH_RATE_LIMIT_MAX_ATTEMPTS`
-
-Before merging security-sensitive PRs, confirm a quick manual check:
-
-1. `curl -i http://<host>/api/auth/me` returns 401 and sets `XSRF-TOKEN` when no auth.
-2. `POST /api/auth/register` currently returns a temporary disabled response (503).
-3. `POST /api/auth/login` currently returns a temporary disabled response (503).
-4. `POST /api/auth/logout-all` rotates session state and clears the session cookie for existing sessions.
+- The service is intentionally anonymous-only; no user accounts, registration, or
+  server-side profile persistence is implemented.
+- Endpoint behavior remains:
+  - `POST /api/schedule` for deterministic schedule token creation.
+  - `GET /api/schedule/:scheduleId` and `/ics/schedule/:scheduleId` for signed-token
+    schedule resolution.
+- For deployment checks, focus on scrape/status and CI signals:
+  - `curl -I http://<host>/healthz`
+  - `curl http://<host>/api/concerts`
+  - `curl http://<host>/api/status`
 
 ## Release checklist for merge gates
 

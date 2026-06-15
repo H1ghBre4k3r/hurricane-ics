@@ -19,26 +19,7 @@ import {
   handleGetScheduleFactory,
 } from "./routes/api/schedule.api";
 import { handleGetScheduleIcsFactory } from "./routes/ics/schedule.ics";
-import { createInMemoryAppStore } from "./appStore";
-import {
-  handleRegisterFactory,
-  handleLoginFactory,
-  handleMeFactory,
-  handleLogoutAllFactory,
-  handleSessionsFactory,
-  handleChangePasswordFactory,
-} from "./routes/api/auth.api";
-import {
-  handleCreateMyScheduleFactory,
-  handleDeleteMyScheduleFactory,
-  handleListMySchedulesFactory,
-} from "./routes/api/me-schedules.api";
 import { getShowStart } from "./utils";
-import {
-  createAuthMiddleware,
-  hashPassword,
-  requireCsrfProtection,
-} from "./auth";
 
 const festival: FestivalPlan = {
   shows: [
@@ -226,7 +207,6 @@ const buildSignedScheduleToken = (
 const fetchFestival = async () => festival;
 process.env.SCHEDULE_SIGNING_SECRET ||= "hurricane-ics-development-secret";
 const scheduleStore = createScheduleStore(1);
-const { authStore, userScheduleStore } = createInMemoryAppStore();
 
 const fetchFestivalWithStatus = Object.assign(fetchFestival, {
   getStatus: () => status,
@@ -450,11 +430,7 @@ test("schedule api rejects missing artist payload", async () => {
 test("schedule calendar endpoint emits events for shared IDs", async () => {
   const schedule = scheduleStore.createOrGet(["HANSEMÄDCHEN"]);
   const res = makeResponse();
-  const handleScheduleIcs = handleGetScheduleIcsFactory(
-    fetchFestival,
-    scheduleStore,
-    userScheduleStore,
-  );
+  const handleScheduleIcs = handleGetScheduleIcsFactory(fetchFestival);
 
   await handleScheduleIcs(
     { params: { scheduleId: schedule.id } } as unknown as Request,
@@ -466,18 +442,14 @@ test("schedule calendar endpoint emits events for shared IDs", async () => {
 });
 
 test("schedule calendar rejects malformed ids", async () => {
-  const handleScheduleIcs = handleGetScheduleIcsFactory(
-    fetchFestival,
-    scheduleStore,
-    userScheduleStore,
-  );
+  const handleScheduleIcs = handleGetScheduleIcsFactory(fetchFestival);
 
   const malformedRes = makeResponse();
   await handleScheduleIcs(
     { params: { scheduleId: "bad-token" } } as unknown as Request,
     malformedRes,
   );
-  assert.equal(malformedRes.statusCode, 404);
+  assert.equal(malformedRes.statusCode, 400);
 
   const unknownRes = makeResponse();
   await handleScheduleIcs(
@@ -489,240 +461,4 @@ test("schedule calendar rejects malformed ids", async () => {
     unknownRes,
   );
   assert.equal(unknownRes.statusCode, 404);
-});
-
-test("auth register endpoint is temporarily disabled", async () => {
-  const response = makeResponse();
-  await handleRegisterFactory(authStore)(
-    { body: { email: "test@example.com", password: "pass12345" } } as Request,
-    response,
-  );
-  assert.equal(response.statusCode, 503);
-  const payload = response.jsonBody as { error: string; disabled: boolean };
-  assert.equal(payload.error, "register is temporarily disabled");
-  assert.equal(payload.disabled, true);
-});
-
-test("auth login endpoint is temporarily disabled", async () => {
-  const response = makeResponse();
-  await handleLoginFactory(authStore)(
-    { body: { email: "test@example.com", password: "pass12345" } } as Request,
-    response,
-  );
-  assert.equal(response.statusCode, 503);
-  const payload = response.jsonBody as { error: string; disabled: boolean };
-  assert.equal(payload.error, "login is temporarily disabled");
-  assert.equal(payload.disabled, true);
-});
-
-test("auth routes expose session metadata and enforce password change flow", async () => {
-  const createdCredentials = hashPassword("pass12345");
-  const created = await authStore.createUser(
-    "change@example.com",
-    createdCredentials.hash,
-    createdCredentials.salt,
-  );
-
-  const authUser = {
-    id: created.id,
-    email: created.email,
-    createdAt: created.createdAt,
-  };
-
-  const sessionsResponse = makeResponse();
-  await handleSessionsFactory()(
-    { authUser } as unknown as Request,
-    sessionsResponse,
-  );
-  assert.equal(sessionsResponse.statusCode, 200);
-  assert.equal((sessionsResponse.jsonBody as { userId: string }).userId, created.id);
-
-  const weakPasswordResponse = makeResponse();
-  await handleChangePasswordFactory(authStore)(
-    {
-      authUser,
-      body: {
-        currentPassword: "wrong",
-        newPassword: "short",
-      },
-    } as unknown as Request,
-    weakPasswordResponse,
-  );
-  assert.equal(weakPasswordResponse.statusCode, 401);
-
-  const strongPasswordResponse = makeResponse();
-  await handleChangePasswordFactory(authStore)(
-    {
-      authUser,
-      body: {
-        currentPassword: "pass12345",
-        newPassword: "newpass123",
-      },
-    } as unknown as Request,
-    strongPasswordResponse,
-  );
-  assert.equal(strongPasswordResponse.statusCode, 200);
-
-  const logoutAllResponse = makeResponse();
-  await handleLogoutAllFactory(authStore)(
-    {
-      authUser,
-      cookies: {
-        "hurricane_ics_session": "old-token",
-      },
-    } as unknown as Request,
-    logoutAllResponse,
-  );
-  assert.equal(logoutAllResponse.statusCode, 200);
-  const logoutBody = logoutAllResponse.jsonBody as {
-    ok: boolean;
-    sessionVersion: number;
-    tokenIssuedAt: number;
-  };
-  assert.equal(logoutBody.ok, true);
-  assert.ok(logoutBody.sessionVersion > 0);
-  assert.ok(logoutBody.tokenIssuedAt > 0);
-});
-
-test("auth register rejects weak credentials", async () => {
-  const response = makeResponse();
-  await handleRegisterFactory(authStore)(
-    { body: { email: "weak@example.com", password: "weak" } } as Request,
-    response,
-  );
-  assert.equal(response.statusCode, 503);
-  const payload = response.jsonBody as { disabled: boolean };
-  assert.equal(payload.disabled, true);
-});
-
-test("me auth endpoint returns session user when present", () => {
-  const response = makeResponse();
-  handleMeFactory()(
-    {
-      authUser: { id: "u1", email: "demo@hurricane.test", createdAt: "2026-01-01T00:00:00.000Z" },
-    } as unknown as Request,
-    response,
-  );
-  assert.equal(response.statusCode, 200);
-  assert.equal((response.jsonBody as { id: string }).id, "u1");
-});
-
-test("user schedule routes and public resolver support persisted IDs", async () => {
-  const createScheduleResponse = makeResponse();
-  await handleCreateMyScheduleFactory(userScheduleStore)(
-    {
-      authUser: { id: "u-calendar", email: "calendar@hurricane.test", createdAt: "2026-01-01T00:00:00.000Z" },
-      body: { artists: ["HANSEMÄDCHEN", "JULI"] },
-    } as unknown as Request,
-    createScheduleResponse,
-  );
-  assert.equal(createScheduleResponse.statusCode, 201);
-
-  const created = createScheduleResponse.jsonBody as {
-    id: string;
-    artists: string[];
-  };
-  assert.equal(created.artists.length, 2);
-
-  const resolvedResponse = makeResponse();
-  await handleGetScheduleFactory(scheduleStore, userScheduleStore)(
-    { params: { scheduleId: created.id } } as unknown as Request,
-    resolvedResponse,
-  );
-  assert.equal(resolvedResponse.statusCode, 200);
-  assert.deepEqual(
-    (resolvedResponse.jsonBody as SharedSchedule).artists.sort(),
-    ["HANSEMÄDCHEN", "JULI"].sort(),
-  );
-
-  const listResponse = makeResponse();
-  await handleListMySchedulesFactory(userScheduleStore)(
-    {
-      authUser: { id: "u-calendar", email: "calendar@hurricane.test", createdAt: "2026-01-01T00:00:00.000Z" },
-    } as unknown as Request,
-    listResponse,
-  );
-  assert.equal(listResponse.statusCode, 200);
-  const list = listResponse.jsonBody as Array<{ id: string }>;
-  assert.equal(list.length, 1);
-
-  const deleteResponse = makeResponse();
-  await handleDeleteMyScheduleFactory(userScheduleStore)(
-    {
-      authUser: { id: "u-calendar", email: "calendar@hurricane.test", createdAt: "2026-01-01T00:00:00.000Z" },
-      params: { id: created.id },
-    } as unknown as Request,
-    deleteResponse,
-  );
-  assert.equal(deleteResponse.statusCode, 204);
-
-  const removedResponse = makeResponse();
-  await handleGetScheduleFactory(scheduleStore, userScheduleStore)(
-    { params: { scheduleId: created.id } } as unknown as Request,
-    removedResponse,
-  );
-  assert.equal(removedResponse.statusCode, 410);
-});
-
-test("auth middleware clears invalid session cookies", async () => {
-  const response = makeResponse();
-  let called = false;
-
-  const middleware = createAuthMiddleware(authStore);
-  await middleware(
-    {
-      headers: {
-        cookie: "hurricane_ics_session=bad-token",
-      },
-    } as Request,
-    response,
-    () => {
-      called = true;
-    },
-  );
-
-  assert.equal(called, true);
-  const setCookie = response.headers["set-cookie"];
-  const cookieLine = Array.isArray(setCookie) ? setCookie[0] : setCookie;
-  assert.ok(typeof cookieLine === "string");
-  assert.match(cookieLine, /hurricane_ics_session=;/);
-  assert.match(cookieLine, /Max-Age=0/);
-  assert.match(cookieLine, /HttpOnly/);
-});
-
-test("CSRF middleware requires a matching request token", () => {
-  const response = makeResponse();
-  let called = false;
-
-  requireCsrfProtection(
-    {
-      headers: {
-        cookie: "XSRF-TOKEN=valid-token",
-      },
-    } as unknown as Request,
-    response,
-    () => {
-      called = true;
-    },
-  );
-
-  assert.equal(response.statusCode, 403);
-  assert.equal(called, false);
-
-  called = false;
-  const allowed = makeResponse();
-  requireCsrfProtection(
-    {
-      headers: {
-        cookie: "XSRF-TOKEN=valid-token",
-        "x-csrf-token": "valid-token",
-      },
-    } as unknown as Request,
-    allowed,
-    () => {
-      called = true;
-    },
-  );
-  assert.equal(allowed.statusCode, 200);
-  assert.equal(called, true);
 });

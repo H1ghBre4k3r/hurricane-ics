@@ -1,41 +1,12 @@
 import { Request, Response } from "express";
 import ical, { ICalCalendarMethod } from "ical-generator";
-import { FetchFestivalFn, ScheduleStore, UserScheduleStore } from "../../types";
+import { FetchFestivalFn } from "../../types";
 import { eventFactory } from "../../utils";
 import { sendCalendar } from "./response";
 import { getSignedScheduleLookup, isSignedScheduleId } from "../../scheduleStore";
 
-const resolveScheduleArtists = async (
-  scheduleStore: ScheduleStore,
-  userScheduleStore: UserScheduleStore | undefined,
-  scheduleId: string,
-) => {
-  if (isSignedScheduleId(scheduleId)) {
-    const lookup = getSignedScheduleLookup(scheduleId);
-    return {
-      lookup,
-      resolver: "signed-token" as const,
-    };
-  }
-
-  if (!userScheduleStore) {
-    return {
-      lookup: {
-        status: "malformed",
-        reason: "Unrecognized schedule id format.",
-      } as const,
-      resolver: "user-schedule" as const,
-    };
-  }
-
-  const lookup = await userScheduleStore.getPublic(scheduleId);
-  return { lookup, resolver: "user-schedule" as const };
-};
-
 export const handleGetScheduleIcsFactory = (
   fetchFestival: FetchFestivalFn,
-  scheduleStore: ScheduleStore,
-  userScheduleStore?: UserScheduleStore,
 ) => {
   return async (req: Request, res: Response) => {
     const scheduleId = req.params["scheduleId"];
@@ -44,33 +15,32 @@ export const handleGetScheduleIcsFactory = (
       return;
     }
 
-    const resolution = await resolveScheduleArtists(
-      scheduleStore,
-      userScheduleStore,
-      scheduleId,
-    );
-    const { lookup } = resolution;
+    if (!isSignedScheduleId(scheduleId)) {
+      console.warn(
+        JSON.stringify({
+          event: "schedule-ics-malformed",
+          route: "schedule",
+          scheduleId,
+          resolver: "signed-token",
+          reason: "Unrecognized schedule id format.",
+        }),
+      );
+      res.status(400).json({ error: "Unrecognized schedule id format." });
+      return;
+    }
+
+    const lookup = getSignedScheduleLookup(scheduleId);
     const schedule = lookup.status === "ok" ? lookup.schedule : null;
     if (lookup.status !== "ok" || !schedule) {
-      const status =
-        lookup.status === "malformed"
-          ? 400
-          : lookup.status === "deleted"
-            ? 410
-            : 404;
-      const event =
-        status === 400
-          ? "schedule-ics-malformed"
-          : status === 410
-            ? "schedule-ics-deleted"
-            : "schedule-ics-miss";
+    const status = lookup.status === "malformed" ? 400 : 404;
+    const event = status === 400 ? "schedule-ics-malformed" : "schedule-ics-miss";
 
       console.warn(
         JSON.stringify({
           event,
           route: "schedule",
           scheduleId,
-          resolver: resolution.resolver,
+          resolver: "signed-token",
           status: lookup.status,
           reason: lookup.reason,
         }),
@@ -116,7 +86,7 @@ export const handleGetScheduleIcsFactory = (
           event: "schedule-ics-hit",
           route: "schedule",
           scheduleId,
-          resolver: resolution.resolver,
+          resolver: "signed-token",
           artists: artistSet.size,
           events: concerts.length,
         }),

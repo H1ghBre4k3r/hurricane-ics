@@ -49,33 +49,6 @@ const parseViewFromSearch = (search: string): ScheduleView => {
 
 const GITHUB_REPO_URL = "https://github.com/H1ghBre4k3r/hurricane-ics";
 
-const getCsrfToken = (): string | null => {
-  const raw = document.cookie
-    .split(";")
-    .map((item) => item.trim())
-    .find((item) => item.startsWith("XSRF-TOKEN="));
-
-  if (!raw) {
-    return null;
-  }
-
-  return decodeURIComponent(raw.replace("XSRF-TOKEN=", ""));
-};
-
-const withCsrfHeader = (
-  headers: Record<string, string> = {},
-): Record<string, string> => {
-  const token = getCsrfToken();
-  if (!token) {
-    return headers;
-  }
-
-  return {
-    ...headers,
-    "X-CSRF-Token": token,
-  };
-};
-
 const updateViewInQuery = (view: ScheduleView) => {
   const params = new URLSearchParams(window.location.search);
   if (view === "lineup") {
@@ -244,8 +217,6 @@ const App = () => {
     useState<ScheduleView>(parseViewFromSearch(window.location.search));
   const [showOnlyShareable, setShowOnlyShareable] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const authUser = null;
-  const [savedScheduleBusy, setSavedScheduleBusy] = useState(false);
 
   const syncScheduleView = (nextView: ScheduleView) => {
     setScheduleView(nextView);
@@ -373,36 +344,6 @@ const App = () => {
   useEffect(() => {
     setSharedSelectionsApplied(false);
   }, [seedScheduleId]);
-
-  const saveCurrentSchedule = async () => {
-    if (!authUser || !selectedArtists.length) {
-      return;
-    }
-
-    setSavedScheduleBusy(true);
-    const name = `My schedule (${new Date().toLocaleDateString()})`;
-
-    try {
-      const response = await fetch("/api/me/schedules", {
-        method: "POST",
-        headers: withCsrfHeader({
-          "Content-Type": "application/json",
-        }),
-        body: JSON.stringify({
-          artists: selectedArtists,
-          name,
-        }),
-      });
-
-      if (!response.ok) {
-        return;
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setSavedScheduleBusy(false);
-    }
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -746,7 +687,6 @@ const App = () => {
   const shareUrl = selectedArtists.length
     ? makeShareUrl(host, selectedArtists, scheduleId)
     : "";
-  const canSaveSchedule = selectedArtists.length > 0 && authUser !== null;
 
   const clearFilters = () => {
     setSearch("");
@@ -963,17 +903,6 @@ const App = () => {
                 >
                   Copy selected link
                 </button>
-                {authUser && (
-                  <button
-                    className={`ghost-button ghost-button--desktop ${canSaveSchedule ? "" : "ghost-button--disabled"
-                      }`}
-                    type="button"
-                    disabled={!canSaveSchedule || savedScheduleBusy}
-                    onClick={() => void saveCurrentSchedule()}
-                  >
-                    {savedScheduleBusy ? "Saving..." : "Save this schedule"}
-                  </button>
-                )}
                 <button
                   className={`ghost-button ghost-button--desktop ${selectedArtists.length ? "" : "ghost-button--disabled"
                     }`}
@@ -1170,17 +1099,6 @@ const App = () => {
           >
             Share
           </button>
-          {authUser && (
-            <button
-              className={`ghost-button ${canSaveSchedule ? "" : "ghost-button--disabled"
-                }`}
-              type="button"
-              disabled={!canSaveSchedule || savedScheduleBusy}
-              onClick={() => void saveCurrentSchedule()}
-            >
-              Save
-            </button>
-          )}
           <button
             className={`ghost-button ${selectedArtists.length ? "" : "ghost-button--disabled"
               }`}

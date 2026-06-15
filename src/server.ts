@@ -2,23 +2,7 @@ import cors from "cors";
 import express, { NextFunction, Request, Response, Router } from "express";
 import { handleGetConcertsApiFactory } from "./routes/api/concerts.api";
 import { handleGetStatusApiFactory } from "./routes/api/status.api";
-import {
-  handleCreateMyScheduleFactory,
-  handleDeleteMyScheduleFactory,
-  handleGetMyScheduleFactory,
-  handleListMySchedulesFactory,
-  handleUpdateMyScheduleFactory,
-} from "./routes/api/me-schedules.api";
 import { handleHealthCheck } from "./routes/health";
-import {
-  handleChangePasswordFactory,
-  handleLoginFactory,
-  handleLogoutAllFactory,
-  handleLogoutFactory,
-  handleMeFactory,
-  handleRegisterFactory,
-  handleSessionsFactory,
-} from "./routes/api/auth.api";
 import {
   handleCreateScheduleFactory,
   handleGetScheduleFactory,
@@ -28,15 +12,8 @@ import { handleGetDayIcsFactory } from "./routes/ics/day.ics";
 import { handleGetIndexIcsFactory } from "./routes/ics/index.ics";
 import { handleGetScheduleIcsFactory } from "./routes/ics/schedule.ics";
 import { FetchFestivalFn, GetFestivalStatusFn } from "./types";
-import { createAppStore } from "./appStore";
 import { ScheduleStore } from "./types";
 import { createScheduleStore } from "./scheduleStore";
-import {
-  createAuthMiddleware,
-  createCsrfBootstrapMiddleware,
-  requireAuth,
-  requireCsrfProtection,
-} from "./auth";
 
 type FetchFestivalWithStatus = FetchFestivalFn & {
   getStatus: GetFestivalStatusFn;
@@ -44,11 +21,9 @@ type FetchFestivalWithStatus = FetchFestivalFn & {
 
 export const createServer = (fetchFestival: FetchFestivalWithStatus) => {
   const scheduleStore: ScheduleStore = createScheduleStore();
-  const { authStore, userScheduleStore } = createAppStore();
   const server = express();
   server.use(cors());
   server.use(express.json());
-  server.use(createAuthMiddleware(authStore));
 
   const requestTimingMiddleware = (
     req: Request,
@@ -82,15 +57,6 @@ export const createServer = (fetchFestival: FetchFestivalWithStatus) => {
   };
 
   server.use(requestTimingMiddleware);
-  server.use((req, res, next) => {
-    if (!req.path.startsWith("/api")) {
-      next();
-      return;
-    }
-
-    createCsrfBootstrapMiddleware(req, res, next);
-  });
-
   server.get("/healthz", handleHealthCheck);
 
   server.use("/", express.static(`${__dirname}/../frontend/build`));
@@ -100,63 +66,16 @@ export const createServer = (fetchFestival: FetchFestivalWithStatus) => {
   icsRouter.get("/", handleGetIndexIcsFactory(fetchFestival));
   icsRouter.get("/day/:day", handleGetDayIcsFactory(fetchFestival));
   icsRouter.get("/artist", handleGetArtistIcsFactory(fetchFestival));
-  icsRouter.get(
-    "/schedule/:scheduleId",
-    handleGetScheduleIcsFactory(fetchFestival, scheduleStore, userScheduleStore),
-  );
+  icsRouter.get("/schedule/:scheduleId", handleGetScheduleIcsFactory(fetchFestival));
 
   server.use(/^\/ics\/\d{4}/, icsRouter);
   server.use("/ics", icsRouter);
 
   const apiRouter = Router();
   apiRouter.post("/schedule", handleCreateScheduleFactory(scheduleStore));
-  apiRouter.get("/schedule/:scheduleId", handleGetScheduleFactory(
-    scheduleStore,
-    userScheduleStore,
-  ));
+  apiRouter.get("/schedule/:scheduleId", handleGetScheduleFactory(scheduleStore));
   apiRouter.get("/concerts", handleGetConcertsApiFactory(fetchFestival));
   apiRouter.get("/status", handleGetStatusApiFactory(fetchFestival.getStatus));
-  apiRouter.post("/auth/register", handleRegisterFactory(authStore));
-  apiRouter.post("/auth/login", handleLoginFactory(authStore));
-
-  // Register/login are intentionally disabled while credentials policy is under review.
-  apiRouter.post("/auth/logout", requireAuth, requireCsrfProtection, handleLogoutFactory());
-  apiRouter.get("/auth/me", requireAuth, handleMeFactory());
-  apiRouter.get("/auth/sessions", requireAuth, handleSessionsFactory());
-  apiRouter.post("/auth/logout-all", requireAuth, requireCsrfProtection, handleLogoutAllFactory(authStore));
-  apiRouter.post(
-    "/auth/change-password",
-    requireAuth,
-    requireCsrfProtection,
-    handleChangePasswordFactory(authStore),
-  );
-
-  const myScheduleRouter = Router();
-  myScheduleRouter.post(
-    "/schedules",
-    requireAuth,
-    requireCsrfProtection,
-    handleCreateMyScheduleFactory(userScheduleStore),
-  );
-  myScheduleRouter.get("/schedules", requireAuth, handleListMySchedulesFactory(userScheduleStore));
-  myScheduleRouter.get(
-    "/schedules/:id",
-    requireAuth,
-    handleGetMyScheduleFactory(userScheduleStore),
-  );
-  myScheduleRouter.patch(
-    "/schedules/:id",
-    requireAuth,
-    requireCsrfProtection,
-    handleUpdateMyScheduleFactory(userScheduleStore),
-  );
-  myScheduleRouter.delete(
-    "/schedules/:id",
-    requireAuth,
-    requireCsrfProtection,
-    handleDeleteMyScheduleFactory(userScheduleStore),
-  );
-  apiRouter.use("/me", myScheduleRouter);
 
   server.use("/api", apiRouter);
 
