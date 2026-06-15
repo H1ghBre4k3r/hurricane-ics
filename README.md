@@ -45,8 +45,8 @@ for selected artists.
   - `parseWarnings`
 - `GET /healthz` returns `200` when the Express process is running.
 - Auth routes:
-  - `POST /api/auth/register` creates an account and issues an `HttpOnly` session cookie.
-  - `POST /api/auth/login` authenticates and issues an `HttpOnly` session cookie.
+  - `POST /api/auth/register` is temporarily disabled.
+  - `POST /api/auth/login` is temporarily disabled.
   - `POST /api/auth/logout` clears the session cookie.
   - `GET /api/auth/me` returns the current user when authenticated.
   - `GET /api/auth/sessions` returns active session metadata.
@@ -96,8 +96,8 @@ the `deploy/k3s-manifests` branch on each run.
 
 Manual auth smoke checks:
 - `curl -i https://hurricane.lome.dev/api/auth/me`
-- `curl -i -X POST https://hurricane.lome.dev/api/auth/register -H "Content-Type: application/json" -H "X-CSRF-Token: <value-from-cookie>" -d '{"email":"me@example.com","password":"pass12345"}'`
-- `curl -i -X POST https://hurricane.lome.dev/api/auth/login -H "Content-Type: application/json" -H "X-CSRF-Token: <value-from-cookie>" -d '{"email":"me@example.com","password":"pass12345"}'`
+- `curl -i -X POST https://hurricane.lome.dev/api/auth/register` returns 503 while login/registration are disabled.
+- `curl -i -X POST https://hurricane.lome.dev/api/auth/login` returns 503 while login/registration are disabled.
 - `curl -i -X POST https://hurricane.lome.dev/api/me/schedules -H "Content-Type: application/json" -H "X-CSRF-Token: <value-from-cookie>" -d '{"artists":["JULI"]}' --cookie "XSRF-TOKEN=<value-from-cookie>"`
 
 ## CI and release checks

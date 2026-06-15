@@ -33,7 +33,6 @@ import { ScheduleStore } from "./types";
 import { createScheduleStore } from "./scheduleStore";
 import {
   createAuthMiddleware,
-  createAuthRateLimiter,
   createCsrfBootstrapMiddleware,
   requireAuth,
   requireCsrfProtection,
@@ -117,19 +116,10 @@ export const createServer = (fetchFestival: FetchFestivalWithStatus) => {
   ));
   apiRouter.get("/concerts", handleGetConcertsApiFactory(fetchFestival));
   apiRouter.get("/status", handleGetStatusApiFactory(fetchFestival.getStatus));
+  apiRouter.post("/auth/register", handleRegisterFactory(authStore));
+  apiRouter.post("/auth/login", handleLoginFactory(authStore));
 
-  apiRouter.post(
-    "/auth/register",
-    requireCsrfProtection,
-    createAuthRateLimiter("register"),
-    handleRegisterFactory(authStore),
-  );
-  apiRouter.post(
-    "/auth/login",
-    requireCsrfProtection,
-    createAuthRateLimiter("login"),
-    handleLoginFactory(authStore),
-  );
+  // Register/login are intentionally disabled while credentials policy is under review.
   apiRouter.post("/auth/logout", requireAuth, requireCsrfProtection, handleLogoutFactory());
   apiRouter.get("/auth/me", requireAuth, handleMeFactory());
   apiRouter.get("/auth/sessions", requireAuth, handleSessionsFactory());

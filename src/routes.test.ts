@@ -36,6 +36,7 @@ import {
 import { getShowStart } from "./utils";
 import {
   createAuthMiddleware,
+  hashPassword,
   requireCsrfProtection,
 } from "./auth";
 
@@ -490,47 +491,42 @@ test("schedule calendar rejects malformed ids", async () => {
   assert.equal(unknownRes.statusCode, 404);
 });
 
-test("auth register/login API emits session metadata", async () => {
-  const registerResponse = makeResponse();
+test("auth register endpoint is temporarily disabled", async () => {
+  const response = makeResponse();
   await handleRegisterFactory(authStore)(
     { body: { email: "test@example.com", password: "pass12345" } } as Request,
-    registerResponse,
+    response,
   );
-  assert.equal(registerResponse.statusCode, 201);
-  assert.ok(registerResponse.headers["set-cookie"]);
-  const registeredUser = registerResponse.jsonBody as {
-    id: string;
-    email: string;
-    createdAt: string;
-  };
-  assert.equal(registeredUser.email, "test@example.com");
+  assert.equal(response.statusCode, 503);
+  const payload = response.jsonBody as { error: string; disabled: boolean };
+  assert.equal(payload.error, "register is temporarily disabled");
+  assert.equal(payload.disabled, true);
+});
 
-  const loginResponse = makeResponse();
+test("auth login endpoint is temporarily disabled", async () => {
+  const response = makeResponse();
   await handleLoginFactory(authStore)(
     { body: { email: "test@example.com", password: "pass12345" } } as Request,
-    loginResponse,
+    response,
   );
-  assert.equal(loginResponse.statusCode, 200);
-  assert.ok(loginResponse.headers["set-cookie"]);
+  assert.equal(response.statusCode, 503);
+  const payload = response.jsonBody as { error: string; disabled: boolean };
+  assert.equal(payload.error, "login is temporarily disabled");
+  assert.equal(payload.disabled, true);
 });
 
 test("auth routes expose session metadata and enforce password change flow", async () => {
-  const registerResponse = makeResponse();
-  await handleRegisterFactory(authStore)(
-    { body: { email: "change@example.com", password: "pass12345" } } as Request,
-    registerResponse,
+  const createdCredentials = hashPassword("pass12345");
+  const created = await authStore.createUser(
+    "change@example.com",
+    createdCredentials.hash,
+    createdCredentials.salt,
   );
 
-  const registered = registerResponse.jsonBody as {
-    id: string;
-    email: string;
-    createdAt: string;
-  };
-
   const authUser = {
-    id: registered.id,
-    email: registered.email,
-    createdAt: registered.createdAt,
+    id: created.id,
+    email: created.email,
+    createdAt: created.createdAt,
   };
 
   const sessionsResponse = makeResponse();
@@ -539,7 +535,7 @@ test("auth routes expose session metadata and enforce password change flow", asy
     sessionsResponse,
   );
   assert.equal(sessionsResponse.statusCode, 200);
-  assert.equal((sessionsResponse.jsonBody as { userId: string }).userId, registered.id);
+  assert.equal((sessionsResponse.jsonBody as { userId: string }).userId, created.id);
 
   const weakPasswordResponse = makeResponse();
   await handleChangePasswordFactory(authStore)(
@@ -566,30 +562,6 @@ test("auth routes expose session metadata and enforce password change flow", asy
     strongPasswordResponse,
   );
   assert.equal(strongPasswordResponse.statusCode, 200);
-
-  const oldLoginResponse = makeResponse();
-  await handleLoginFactory(authStore)(
-    {
-      body: {
-        email: "change@example.com",
-        password: "pass12345",
-      },
-    } as Request,
-    oldLoginResponse,
-  );
-  assert.equal(oldLoginResponse.statusCode, 401);
-
-  const newLoginResponse = makeResponse();
-  await handleLoginFactory(authStore)(
-    {
-      body: {
-        email: "change@example.com",
-        password: "newpass123",
-      },
-    } as Request,
-    newLoginResponse,
-  );
-  assert.equal(newLoginResponse.statusCode, 200);
 
   const logoutAllResponse = makeResponse();
   await handleLogoutAllFactory(authStore)(
@@ -618,7 +590,9 @@ test("auth register rejects weak credentials", async () => {
     { body: { email: "weak@example.com", password: "weak" } } as Request,
     response,
   );
-  assert.equal(response.statusCode, 400);
+  assert.equal(response.statusCode, 503);
+  const payload = response.jsonBody as { disabled: boolean };
+  assert.equal(payload.disabled, true);
 });
 
 test("me auth endpoint returns session user when present", () => {
@@ -665,7 +639,6 @@ test("user schedule routes and public resolver support persisted IDs", async () 
   await handleListMySchedulesFactory(userScheduleStore)(
     {
       authUser: { id: "u-calendar", email: "calendar@hurricane.test", createdAt: "2026-01-01T00:00:00.000Z" },
-    method: "GET",
     } as unknown as Request,
     listResponse,
   );

@@ -7,36 +7,11 @@ import {
   createAuthenticatedRequest,
   AuthenticatedRequest,
 } from "../../auth";
-import { toAppUser } from "../../appStore";
 import { hashPassword, verifyPassword } from "../../auth";
-
-type SignInPayload = {
-  email: string | null;
-  password: string | null;
-};
 
 type ChangePasswordPayload = {
   currentPassword: string | null;
   newPassword: string | null;
-};
-
-const normalizeAuthPayload = (body: unknown): SignInPayload => {
-  if (!body || typeof body !== "object") {
-    return { email: null, password: null };
-  }
-
-  const candidate = body as {
-    email?: unknown;
-    password?: unknown;
-  };
-
-  return {
-    email:
-      typeof candidate.email === "string"
-        ? candidate.email.trim().toLowerCase()
-        : null,
-    password: typeof candidate.password === "string" ? candidate.password : null,
-  };
 };
 
 const normalizeChangePasswordPayload = (body: unknown): ChangePasswordPayload => {
@@ -56,10 +31,6 @@ const normalizeChangePasswordPayload = (body: unknown): ChangePasswordPayload =>
   };
 };
 
-const isValidEmail = (value: string): boolean => {
-  return /.+@.+\..+/.test(value);
-};
-
 const isStrongPassword = (value: string): boolean => {
   return value.length >= 8 && /[A-Za-z]/.test(value) && /[0-9]/.test(value);
 };
@@ -74,81 +45,22 @@ const emitStructuredAuthEvent = (event: string, extras?: Record<string, unknown>
   console.info(JSON.stringify({ event, ...extras }));
 };
 
+const emitAuthDisabledResponse = (res: Response, endpoint: "register" | "login") => {
+  res.status(503).json({
+    error: `${endpoint} is temporarily disabled`,
+    disabled: true,
+  });
+};
+
 export const handleRegisterFactory = (authStore: AuthStore) => {
-  return async (req: Request, res: Response) => {
-    const { email, password } = normalizeAuthPayload(req.body);
-    if (!email || !password) {
-      res.status(400).json({ error: "Email and password are required." });
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      res.status(400).json({ error: "Invalid email address." });
-      return;
-    }
-
-    if (!isStrongPassword(password)) {
-      res
-        .status(400)
-        .json({ error: "Password must be at least 8 chars with letters and numbers." });
-      return;
-    }
-
-    const existing = await authStore.getUserByEmail(email);
-    if (existing) {
-      emitStructuredAuthEvent("auth-register-fail", { email, reason: "duplicate" });
-      res.status(409).json({ error: "Email already registered." });
-      return;
-    }
-
-    const { hash, salt } = hashPassword(password);
-    const persisted = await authStore.createUser(email, hash, salt);
-
-    const token = makeSessionTokenForUser(persisted);
-    const cookies = [makeSessionCookieHeader(token)];
-    res.setHeader("Set-Cookie", cookies);
-
-    emitStructuredAuthEvent("auth-register-success", {
-      userId: persisted.id,
-      email: persisted.email,
-    });
-
-    const appUser = toAppUser(persisted);
-    res.status(201).json(buildAuthSessionPayload(appUser));
+  return async (_req: Request, res: Response) => {
+    emitAuthDisabledResponse(res, "register");
   };
 };
 
 export const handleLoginFactory = (authStore: AuthStore) => {
-  return async (req: Request, res: Response) => {
-    const { email, password } = normalizeAuthPayload(req.body);
-    if (!email || !password) {
-      res.status(400).json({ error: "Email and password are required." });
-      return;
-    }
-
-    const persisted = await authStore.getUserByEmail(email);
-    if (!persisted || !verifyPassword(password, persisted.passwordHash, persisted.passwordSalt)) {
-      emitStructuredAuthEvent("auth-login-fail", { email: email || "<missing>" });
-      res.status(401).json({ error: "Invalid credentials." });
-      return;
-    }
-
-    const rotated = await authStore.revokeAllSessions(persisted.id);
-    const refreshed = {
-      ...persisted,
-      sessionVersion: rotated.sessionVersion,
-      tokenIssuedAt: rotated.tokenIssuedAt,
-    };
-
-    const token = makeSessionTokenForUser(refreshed);
-    res.setHeader("Set-Cookie", [makeSessionCookieHeader(token)]);
-
-    emitStructuredAuthEvent("auth-login-success", {
-      userId: persisted.id,
-    });
-
-    const appUser = toAppUser(refreshed);
-    res.json(buildAuthSessionPayload(appUser));
+  return async (_req: Request, res: Response) => {
+    emitAuthDisabledResponse(res, "login");
   };
 };
 

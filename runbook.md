@@ -85,9 +85,9 @@ Auth/session assumptions for production:
 Before merging security-sensitive PRs, confirm a quick manual check:
 
 1. `curl -i http://<host>/api/auth/me` returns 401 and sets `XSRF-TOKEN` when no auth.
-2. POST `/api/auth/register` with matching `X-CSRF-Token` works for a valid body.
-3. POST `/api/auth/login` with wrong credentials returns a generic 401 error.
-4. POST `/api/auth/logout-all` rotates session state and clears the session cookie.
+2. `POST /api/auth/register` currently returns a temporary disabled response (503).
+3. `POST /api/auth/login` currently returns a temporary disabled response (503).
+4. `POST /api/auth/logout-all` rotates session state and clears the session cookie for existing sessions.
 
 ## Release checklist for merge gates
 

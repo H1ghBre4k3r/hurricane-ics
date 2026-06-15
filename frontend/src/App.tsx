@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ConcertsApiResponse,
   Show,
-  AppUser,
-  UserSchedule,
   UpstreamLineupHealth,
 } from "./../../src/types";
 import "./App.css";
@@ -244,12 +242,7 @@ const App = () => {
     useState<ScheduleView>(parseViewFromSearch(window.location.search));
   const [showOnlyShareable, setShowOnlyShareable] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const [authUser, setAuthUser] = useState<AppUser | null>(null);
-  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
-  const [authStatus, setAuthStatus] = useState("");
-  const [savedSchedules, setSavedSchedules] = useState<UserSchedule[]>([]);
+  const authUser = null;
   const [savedScheduleBusy, setSavedScheduleBusy] = useState(false);
 
   const syncScheduleView = (nextView: ScheduleView) => {
@@ -375,118 +368,9 @@ const App = () => {
     [],
   );
 
-  const refreshSavedSchedules = useCallback(async () => {
-    if (!authUser) {
-      setSavedSchedules([]);
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/me/schedules");
-      if (!response.ok) {
-        return;
-      }
-
-      const payload = (await response.json()) as UserSchedule[];
-      setSavedSchedules(payload);
-    } catch (error) {
-      console.error(error);
-      setSavedSchedules([]);
-    }
-  }, [authUser]);
-
-  const refreshAuthUser = useCallback(async () => {
-    try {
-      const response = await fetch("/api/auth/me");
-      if (!response.ok) {
-        setAuthUser(null);
-        setSavedSchedules([]);
-        return;
-      }
-
-      const user = (await response.json()) as AppUser;
-      setAuthUser(user);
-      setAuthStatus("");
-    } catch (error) {
-      console.error(error);
-      setAuthUser(null);
-      setSavedSchedules([]);
-    }
-  }, [refreshSavedSchedules]);
-
-  useEffect(() => {
-    void refreshAuthUser();
-  }, [refreshAuthUser]);
-
   useEffect(() => {
     setSharedSelectionsApplied(false);
   }, [seedScheduleId]);
-
-  useEffect(() => {
-    if (!authUser) {
-      return;
-    }
-
-    void refreshSavedSchedules();
-  }, [authUser, refreshSavedSchedules]);
-
-  const submitAuth = async () => {
-    if (!authEmail.trim() || !authPassword) {
-      setAuthStatus("Email and password are required.");
-      return;
-    }
-
-    try {
-      setAuthStatus(
-        authMode === "sign-in" ? "Signing in..." : "Creating account...",
-      );
-      const response = await fetch(
-        authMode === "sign-in" ? "/api/auth/login" : "/api/auth/register",
-        {
-          method: "POST",
-          headers: withCsrfHeader({
-            "Content-Type": "application/json",
-          }),
-          body: JSON.stringify({
-            email: authEmail.trim(),
-            password: authPassword,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        setAuthStatus(payload.error || "Authentication failed.");
-        return;
-      }
-
-      const user = (await response.json()) as AppUser;
-      setAuthUser(user);
-      setAuthPassword("");
-      setAuthStatus("");
-      await refreshSavedSchedules();
-    } catch (error) {
-      console.error(error);
-      setAuthStatus("Authentication request failed.");
-    }
-  };
-
-  const logout = async () => {
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: withCsrfHeader(),
-      });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setAuthUser(null);
-      setSavedSchedules([]);
-      setAuthStatus("");
-    }
-  };
 
   const saveCurrentSchedule = async () => {
     if (!authUser || !selectedArtists.length) {
@@ -509,52 +393,13 @@ const App = () => {
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        setAuthStatus(payload.error || "Failed to save schedule.");
         return;
       }
-
-      const created = (await response.json()) as UserSchedule;
-      setSavedSchedules((current) => [created, ...current]);
-      setAuthStatus("Schedule saved.");
-      window.setTimeout(() => setAuthStatus(""), 1700);
     } catch (error) {
       console.error(error);
-      setAuthStatus("Failed to save schedule.");
     } finally {
       setSavedScheduleBusy(false);
     }
-  };
-
-  const deleteSavedSchedule = async (id: string) => {
-    if (!authUser || !id) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/me/schedules/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: withCsrfHeader(),
-      });
-
-      if (!response.ok) {
-        return;
-      }
-
-      setSavedSchedules((current) => current.filter((schedule) => schedule.id !== id));
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const openSavedSchedule = (schedule: UserSchedule) => {
-    setSeedScheduleId(schedule.id);
-    setScheduleId(schedule.id);
-    setSharedArtists(schedule.artists);
-    setSharedSelectionsApplied(false);
-    syncScheduleView("my-schedule");
   };
 
   useEffect(() => {
@@ -899,8 +744,6 @@ const App = () => {
   const shareUrl = selectedArtists.length
     ? makeShareUrl(host, selectedArtists, scheduleId)
     : "";
-  const makeSavedScheduleShareUrl = (scheduleId: string): string =>
-    makeShareUrl(host, [], scheduleId);
   const canSaveSchedule = selectedArtists.length > 0 && authUser !== null;
 
   const clearFilters = () => {
@@ -1063,116 +906,16 @@ const App = () => {
       <section className="auth-panel">
         <div className="auth-panel__header">
           <p className="section-kicker">Account</p>
-          <h3>{authUser ? "Signed in" : "Sign in to save schedules"}</h3>
+          <h3>Authentication disabled</h3>
         </div>
 
-        {authStatus && (
-          <p className="auth-panel__status" role="status">
-            {authStatus}
-          </p>
-        )}
-
-        {authUser ? (
-          <>
-            <p>Hi {authUser.email}</p>
-            <div className="planner-actions">
-              <button
-                className="ghost-button"
-                type="button"
-                onClick={logout}
-              >
-                Logout
-              </button>
-            </div>
-
-            <div className="auth-panel__schedules">
-              <h4>My Schedules</h4>
-              {!savedSchedules.length && (
-                <p className="section-kicker">No saved schedules yet.</p>
-              )}
-              {savedSchedules.length > 0 && (
-                <ul className="schedule-list">
-                  {savedSchedules.map((schedule) => (
-                    <li className="schedule-list__row" key={schedule.id}>
-                      <div>
-                        <strong>{schedule.name || "Untitled schedule"}</strong>
-                        <span>
-                          {schedule.artists.length}
-                          {" "}
-                          picks
-                        </span>
-                      </div>
-                      <div className="schedule-list__actions">
-                        <button
-                          className="ghost-button"
-                          type="button"
-                          onClick={() => openSavedSchedule(schedule)}
-                        >
-                          Open
-                        </button>
-                        <button
-                          className="ghost-button"
-                          type="button"
-                          onClick={() => copyLink(makeSavedScheduleShareUrl(schedule.id), "share-copied")}
-                        >
-                          Copy share
-                        </button>
-                        <button
-                          className="ghost-button"
-                          type="button"
-                          onClick={() => deleteSavedSchedule(schedule.id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </>
-        ) : (
-          <form
-            className="auth-panel__form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void submitAuth();
-            }}
-          >
-            <div className="search-field">
-              <span>Email</span>
-              <input
-                type="email"
-                value={authEmail}
-                onChange={(event) => setAuthEmail(event.target.value)}
-              />
-            </div>
-            <div className="search-field">
-              <span>Password</span>
-              <input
-                type="password"
-                value={authPassword}
-                onChange={(event) => setAuthPassword(event.target.value)}
-              />
-            </div>
-            <div className="planner-actions">
-              <button
-                className="ghost-button"
-                type="button"
-                onClick={() =>
-                  setAuthMode((current) =>
-                    current === "sign-in" ? "sign-up" : "sign-in",
-                  )
-                }
-              >
-                {authMode === "sign-in" ? "Need an account?" : "Have an account?"}
-              </button>
-              <button className="calendar-button" type="submit">
-                {authMode === "sign-in" ? "Sign in" : "Sign up"}
-              </button>
-            </div>
-          </form>
-        )}
+        <p className="auth-panel__status" role="status">
+          Login and registration are temporarily disabled while compliance review is in
+          progress.
+        </p>
+        <p className="auth-panel__status">
+          Anonymous sharing remains fully available with links.
+        </p>
       </section>
 
       <section className="schedule" aria-label="Festival schedule">
