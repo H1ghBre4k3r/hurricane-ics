@@ -5,7 +5,6 @@ import {
   ShowConflictMap,
   formatDayLabel,
   formatShowTime,
-  getImageUrl,
 } from "./schedule";
 
 type MyScheduleProps = {
@@ -115,8 +114,6 @@ export const MySchedule: FC<MyScheduleProps> = ({
             <div className="timeline">
               {day.events.map((show) => {
                 const conflicts = conflictMap[show.artist.name] || [];
-                const imageUrl = getImageUrl(show.artist.image);
-
                 return (
                   <article
                     className={`timeline-item ${
@@ -129,11 +126,7 @@ export const MySchedule: FC<MyScheduleProps> = ({
                     </div>
                     <div className="timeline-item__card">
                       <div className="timeline-item__media" aria-hidden="true">
-                        {imageUrl ? (
-                          <img src={imageUrl} alt="" loading="lazy" />
-                        ) : (
-                          <span>{getInitial(show)}</span>
-                        )}
+                        <span>{getInitial(show)}</span>
                       </div>
                       <div className="timeline-item__body">
                         {conflicts.length > 0 && (

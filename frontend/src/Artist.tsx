@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { Show } from "../../src/types";
-import { formatShowTime, getImageUrl } from "./schedule";
+import { formatShowTime } from "./schedule";
 import { ConflictDetail } from "./schedule";
 
 type ArtistProps = {
@@ -19,8 +19,6 @@ export const Artist: FC<ArtistProps> = ({
   setSelected,
 }) => {
   const name = show.artist.name;
-  const imageUrl = getImageUrl(show.artist.image);
-
   return (
     <button
       type="button"
@@ -32,11 +30,7 @@ export const Artist: FC<ArtistProps> = ({
       aria-label={`${selected ? "Unselect" : "Select"} ${name}`}
     >
       <span className="artist-card__media" aria-hidden="true">
-        {imageUrl ? (
-          <img src={imageUrl} alt="" loading="lazy" />
-        ) : (
-          <span className="artist-card__fallback">{name.charAt(0)}</span>
-        )}
+        <span className="artist-card__fallback">{name.charAt(0)}</span>
         <span className="artist-card__time">{formatShowTime(show)}</span>
       </span>
 
