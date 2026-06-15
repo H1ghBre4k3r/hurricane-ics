@@ -47,6 +47,8 @@ const parseViewFromSearch = (search: string): ScheduleView => {
   return "lineup";
 };
 
+const GITHUB_REPO_URL = "https://github.com/H1ghBre4k3r/hurricane-ics";
+
 const getCsrfToken = (): string | null => {
   const raw = document.cookie
     .split(";")
@@ -870,6 +872,14 @@ const App = () => {
               href={fullCalendarHref}
             >
               Subscribe to full lineup
+            </a>
+            <a
+              className="ghost-button ghost-button--light"
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub
             </a>
             <button
               className="ghost-button ghost-button--light"
