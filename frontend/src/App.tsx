@@ -848,8 +848,8 @@ const App = () => {
               <h1>{festivalTitle}</h1>
               <p className="hero__subtitle">{dateRange}</p>
               <p className="hero__disclaimer">
-                Independent fan-made calendar tool for Hurricane Festival attendees. Not
-                affiliated with the festival organizers.
+                Independent fan-made calendar tool for Hurricane Festival attendees.
+                Not affiliated with Hurricane Festival or its organizers.
               </p>
             </div>
             <div className="hero__summary" aria-live="polite">
@@ -955,18 +955,16 @@ const App = () => {
               </div>
               <div className="schedule__actions">
                 <a
-                  className={`calendar-button calendar-button--desktop ${
-                    selectedArtists.length ? "" : "calendar-button--disabled"
-                  }`}
+                  className={`calendar-button calendar-button--desktop ${selectedArtists.length ? "" : "calendar-button--disabled"
+                    }`}
                   href={calendarHref || undefined}
                   aria-disabled={!selectedArtists.length}
                 >
                   Add selected
                 </a>
                 <button
-                  className={`ghost-button ghost-button--desktop ${
-                    selectedArtists.length ? "" : "ghost-button--disabled"
-                  }`}
+                  className={`ghost-button ghost-button--desktop ${selectedArtists.length ? "" : "ghost-button--disabled"
+                    }`}
                   type="button"
                   disabled={!selectedArtists.length}
                   onClick={() => copyLink(copyCalendarUrl, "calendar-copied")}
@@ -975,9 +973,8 @@ const App = () => {
                 </button>
                 {authUser && (
                   <button
-                    className={`ghost-button ghost-button--desktop ${
-                      canSaveSchedule ? "" : "ghost-button--disabled"
-                    }`}
+                    className={`ghost-button ghost-button--desktop ${canSaveSchedule ? "" : "ghost-button--disabled"
+                      }`}
                     type="button"
                     disabled={!canSaveSchedule || savedScheduleBusy}
                     onClick={() => void saveCurrentSchedule()}
@@ -986,9 +983,8 @@ const App = () => {
                   </button>
                 )}
                 <button
-                  className={`ghost-button ghost-button--desktop ${
-                    selectedArtists.length ? "" : "ghost-button--disabled"
-                  }`}
+                  className={`ghost-button ghost-button--desktop ${selectedArtists.length ? "" : "ghost-button--disabled"
+                    }`}
                   type="button"
                   disabled={!selectedArtists.length}
                   onClick={() => copyLink(shareUrl, "share-copied")}
@@ -1006,20 +1002,18 @@ const App = () => {
 
             <div className="view-switch" aria-label="Schedule view">
               <button
-                className={`view-switch__button ${
-                  scheduleView === "lineup" ? "view-switch__button--active" : ""
-                }`}
+                className={`view-switch__button ${scheduleView === "lineup" ? "view-switch__button--active" : ""
+                  }`}
                 type="button"
                 onClick={() => syncScheduleView("lineup")}
               >
                 Lineup
               </button>
               <button
-                className={`view-switch__button ${
-                  scheduleView === "my-schedule"
-                    ? "view-switch__button--active"
-                    : ""
-                }`}
+                className={`view-switch__button ${scheduleView === "my-schedule"
+                  ? "view-switch__button--active"
+                  : ""
+                  }`}
                 type="button"
                 onClick={() => syncScheduleView("my-schedule")}
               >
@@ -1043,9 +1037,8 @@ const App = () => {
                   <div className="filter-row" aria-label="Stage filters">
                     {stageOptions.map((stage) => (
                       <button
-                        className={`filter-chip ${
-                          selectedStages[stage] ? "filter-chip--active" : ""
-                        }`}
+                        className={`filter-chip ${selectedStages[stage] ? "filter-chip--active" : ""
+                          }`}
                         key={stage}
                         type="button"
                         onClick={() => toggleFilter(stage, setSelectedStages)}
@@ -1058,9 +1051,8 @@ const App = () => {
                   <div className="filter-row" aria-label="Category filters">
                     {categoryOptions.map((category) => (
                       <button
-                        className={`filter-chip ${
-                          selectedCategories[category] ? "filter-chip--active" : ""
-                        }`}
+                        className={`filter-chip ${selectedCategories[category] ? "filter-chip--active" : ""
+                          }`}
                         key={category}
                         type="button"
                         onClick={() =>
@@ -1074,9 +1066,8 @@ const App = () => {
 
                   <div className="planner-actions">
                     <button
-                      className={`toggle-button ${
-                        selectedOnly ? "toggle-button--active" : ""
-                      }`}
+                      className={`toggle-button ${selectedOnly ? "toggle-button--active" : ""
+                        }`}
                       type="button"
                       onClick={() => setSelectedOnly((current) => !current)}
                     >
@@ -1104,9 +1095,8 @@ const App = () => {
                 <nav className="day-tabs" aria-label="Festival days">
                   {festival.map((day) => (
                     <button
-                      className={`day-tab ${
-                        day.day === activeDay ? "day-tab--active" : ""
-                      }`}
+                      className={`day-tab ${day.day === activeDay ? "day-tab--active" : ""
+                        }`}
                       key={day.day}
                       type="button"
                       onClick={() => setActiveDay(day.day)}
@@ -1143,7 +1133,7 @@ const App = () => {
                 )}
               </>
             ) : (
-            <MySchedule
+              <MySchedule
                 selectedDays={selectedDays}
                 selectedCount={selectedArtists.length}
                 calendarHref={calendarHref}
@@ -1173,49 +1163,44 @@ const App = () => {
               ? " . Choose acts to create a feed"
               : ""}
           </span>
-          <span className={`copy-state ${
-            copyState === "failed" ? "copy-state--error" : ""
-          }`}>
+          <span className={`copy-state ${copyState === "failed" ? "copy-state--error" : ""
+            }`}>
             {copyStateMessage}
           </span>
         </div>
         <div className="mobile-action__buttons">
-                <button
-                  className={`ghost-button ${
-                    selectedArtists.length ? "" : "ghost-button--disabled"
-                  }`}
-                  type="button"
-                  disabled={!selectedArtists.length}
-                  onClick={() => copyLink(shareUrl, "share-copied")}
-                >
-                  Share
-                </button>
-                {authUser && (
-                  <button
-                    className={`ghost-button ${
-                      canSaveSchedule ? "" : "ghost-button--disabled"
-                    }`}
-                    type="button"
-                    disabled={!canSaveSchedule || savedScheduleBusy}
-                    onClick={() => void saveCurrentSchedule()}
-                  >
-                    Save
-                  </button>
-                )}
-                <button
-                  className={`ghost-button ${
-                    selectedArtists.length ? "" : "ghost-button--disabled"
-                  }`}
-                  type="button"
+          <button
+            className={`ghost-button ${selectedArtists.length ? "" : "ghost-button--disabled"
+              }`}
+            type="button"
+            disabled={!selectedArtists.length}
+            onClick={() => copyLink(shareUrl, "share-copied")}
+          >
+            Share
+          </button>
+          {authUser && (
+            <button
+              className={`ghost-button ${canSaveSchedule ? "" : "ghost-button--disabled"
+                }`}
+              type="button"
+              disabled={!canSaveSchedule || savedScheduleBusy}
+              onClick={() => void saveCurrentSchedule()}
+            >
+              Save
+            </button>
+          )}
+          <button
+            className={`ghost-button ${selectedArtists.length ? "" : "ghost-button--disabled"
+              }`}
+            type="button"
             disabled={!selectedArtists.length}
             onClick={() => copyLink(copyCalendarUrl, "calendar-copied")}
           >
             Copy
           </button>
           <a
-            className={`calendar-button ${
-              selectedArtists.length ? "" : "calendar-button--disabled"
-            }`}
+            className={`calendar-button ${selectedArtists.length ? "" : "calendar-button--disabled"
+              }`}
             href={calendarHref || undefined}
             aria-disabled={!selectedArtists.length}
           >
