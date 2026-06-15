@@ -847,6 +847,10 @@ const App = () => {
             <div>
               <h1>{festivalTitle}</h1>
               <p className="hero__subtitle">{dateRange}</p>
+              <p className="hero__disclaimer">
+                Independent fan-made calendar tool for Hurricane Festival attendees. Not
+                affiliated with the festival organizers.
+              </p>
             </div>
             <div className="hero__summary" aria-live="polite">
               <span>{selectedArtists.length}</span>

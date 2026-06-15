@@ -89,6 +89,13 @@ a {
   margin: 18px 0 0;
 }
 
+.hero__disclaimer {
+  color: #cfdfd8;
+  font-size: 0.92rem;
+  margin: 12px 0 0;
+  max-width: 52ch;
+}
+
 .hero__summary {
   align-items: center;
   border: 1px solid rgba(247, 251, 245, 0.3);
