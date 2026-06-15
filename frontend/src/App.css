@@ -931,41 +931,23 @@ a {
   border: 1px solid rgba(247, 251, 245, 0.16);
   border-radius: 8px;
   box-shadow: 0 14px 40px rgba(24, 43, 39, 0.08);
-  color: rgba(247, 251, 245, 0.92);
   margin-top: 34px;
   padding: 28px;
 }
 
-.site-footer h2 {
+.site-footer__link {
   color: #f7fbf5;
+  display: inline-block;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.8rem, 4vw, 2.2rem);
-  margin: 0 0 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 
-.site-footer h3 {
-  color: #f7fbf5;
-  font-size: 1.2rem;
-  letter-spacing: 0;
-  margin: 24px 0 8px;
-}
-
-.site-footer section {
-  border-top: 1px solid rgba(247, 251, 245, 0.18);
-  margin-top: 14px;
-  padding-top: 14px;
-}
-
-.site-footer p {
-  color: rgba(247, 251, 245, 0.86);
-  line-height: 1.58;
-  margin: 0 0 12px;
-}
-
-.site-footer__meta {
-  color: rgba(247, 251, 245, 0.78);
-  margin-top: 20px;
-  margin-bottom: 0;
+.site-footer__link:hover,
+.site-footer__link:focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 @keyframes pulse {
