@@ -1223,6 +1223,94 @@ const App = () => {
           </a>
         </div>
       </div>
+
+      <footer className="site-footer" aria-label="Datenschutzerklärung">
+        <h2>Datenschutzerklärung</h2>
+
+        <section>
+          <h3>1. Verantwortlicher</h3>
+          <p>Verantwortlich für diese Website ist:</p>
+          <p>Louis Meyer<br />louis@lome.dev</p>
+        </section>
+
+        <section>
+          <h3>2. Bereitstellung der Website</h3>
+          <p>
+            Beim Aufruf dieser Website verarbeitet der Webserver technisch
+            erforderliche Informationen, um die Website und die bereitgestellten
+            Kalenderfeeds auszuliefern. Hierzu können insbesondere die IP-Adresse,
+            Datum und Uhrzeit des Zugriffs, aufgerufene Ressourcen sowie
+            Informationen zum verwendeten Browser gehören.
+          </p>
+          <p>
+            Die Verarbeitung erfolgt zur Bereitstellung und zum sicheren Betrieb
+            der Website.
+          </p>
+        </section>
+
+        <section>
+          <h3>3. Individuelle Kalenderfeeds</h3>
+          <p>
+            Diese Website ermöglicht die Erstellung individueller Kalenderfeeds für
+            Festivalbesucher.
+          </p>
+          <p>
+            Die Auswahl der gewünschten Acts wird nicht dauerhaft auf dem Server
+            gespeichert. Stattdessen wird die Auswahl in der Feed-URL kodiert und bei
+            Abruf des Kalenderfeeds verarbeitet, um die entsprechenden Kalendereinträge
+            zu erzeugen.
+          </p>
+          <p>
+            Die Feed-URL sollte wie ein persönlicher Link behandelt und nicht
+            öffentlich weitergegeben werden.
+          </p>
+        </section>
+
+        <section>
+          <h3>4. Local Storage</h3>
+          <p>
+            Zur Verbesserung der Benutzerfreundlichkeit nutzt diese Website den Local
+            Storage des Browsers. Dort können lokal auf dem Endgerät Informationen wie
+            die ausgewählten Acts gespeichert werden.
+          </p>
+          <p>
+            Diese Daten verbleiben ausschließlich im Browser des Nutzers und werden
+            nicht an Dritte übermittelt.
+          </p>
+        </section>
+
+        <section>
+          <h3>5. Keine Cookies und kein Tracking</h3>
+          <p>
+            Diese Website verwendet keine Cookies zu Werbe-, Analyse- oder
+            Trackingzwecken.
+          </p>
+          <p>
+            Es werden keine Webanalyse-Dienste eingesetzt und keine Nutzerprofile
+            erstellt.
+          </p>
+        </section>
+
+        <section>
+          <h3>6. Rechte betroffener Personen</h3>
+          <p>
+            Betroffene Personen haben im Rahmen der gesetzlichen Vorschriften insbesondere
+            das Recht auf Auskunft über die Verarbeitung ihrer personenbezogenen Daten,
+            auf Berichtigung, Löschung, Einschränkung der Verarbeitung sowie auf
+            Beschwerde bei einer Datenschutzaufsichtsbehörde.
+          </p>
+        </section>
+
+        <section>
+          <h3>7. Kontakt</h3>
+          <p>
+            Bei Fragen zum Datenschutz kann der Verantwortliche unter der oben genannten
+            E-Mail-Adresse kontaktiert werden.
+          </p>
+        </section>
+
+        <p className="site-footer__meta">Stand: Juni 2026</p>
+      </footer>
     </main>
   );
 };
